@@ -6,3 +6,4 @@ httpx>=0.28.1
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
 faster-whisper>=1.0.0
+piper-tts>=1.4.0

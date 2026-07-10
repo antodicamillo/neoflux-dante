@@ -30,6 +30,18 @@
   .dot.err{background:var(--err);box-shadow:0 0 10px var(--err)}
   @keyframes pulse{50%{opacity:.3}}
   .clock{font-size:12px;letter-spacing:.12em;opacity:.8}
+  .mood{display:flex;align-items:center;gap:7px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);border:1px solid var(--cyan-deep);border-radius:20px;padding:3px 10px}
+  .mdot{width:7px;height:7px;border-radius:50%;background:#334;transition:.4s;box-shadow:0 0 8px transparent}
+  .persona{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--cyan);opacity:.7;transition:.3s}
+  @media (max-width:640px){.persona,.mood,.tag{display:none}}
+  /* boot animation */
+  .boot{position:fixed;inset:0;z-index:100;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;transition:opacity .8s ease;cursor:pointer}
+  .boot.gone{opacity:0;pointer-events:none}
+  .boot-brand{font-size:min(16vw,84px);font-weight:700;letter-spacing:.34em;color:#eafeff;text-shadow:0 0 30px rgba(34,211,238,.7);opacity:0;animation:bootIn 1s .2s forwards}
+  .boot-log{font-size:11px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;min-height:70px;text-align:center;line-height:1.9}
+  .boot-start{margin-top:8px;padding:12px 26px;border:1px solid var(--cyan-deep);border-radius:26px;background:rgba(6,182,212,.08);color:var(--cyan);font:12px 'Share Tech Mono',monospace;letter-spacing:.24em;cursor:pointer;opacity:0;transition:.25s;animation:bootIn .6s 2.6s forwards}
+  .boot-start:hover{background:rgba(6,182,212,.2);box-shadow:0 0 24px rgba(34,211,238,.4)}
+  @keyframes bootIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 
   /* ── scena vocale centrale ── */
   .stage{position:fixed;z-index:10;inset:54px 0 0 0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
@@ -84,12 +96,19 @@
 </style>
 </head>
 <body>
+  <div class="boot" id="boot">
+    <div class="boot-brand">DANTE</div>
+    <div class="boot-log" id="bootlog"></div>
+    <button class="boot-start" id="bootStart">TOCCA PER INIZIARE</button>
+  </div>
   <div class="bg grad"></div><div class="bg glow"></div><div class="bg grain"></div>
   <canvas id="orb"></canvas>
 
   <header>
     <span class="brand">DANTE</span><span class="tag">NEOFLUX · V1</span>
     <span class="spacer"></span>
+    <span class="mood" id="mood" title="Umore rilevato dalla voce"><span class="mdot" id="mdot"></span><span id="mtxt">—</span></span>
+    <span class="persona" id="persona">in attesa</span>
     <span class="stat"><span class="dot" id="dot"></span><span id="conn">connessione…</span></span>
     <span class="clock" id="clock">--:--</span>
   </header>
@@ -140,32 +159,83 @@ float snoise(vec3 v){const vec2 C=vec2(1.0/6.0,1.0/3.0);const vec4 D=vec4(0.0,0.
  vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));p0*=norm.x;p1*=norm.y;p2*=norm.z;p3*=norm.w;
  vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0);m=m*m;
  return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));}`;
-const VERT=NOISE+`uniform float uTime;uniform float uIntensity;varying float vDisp;varying vec3 vN;varying vec3 vV;
+const VERT=NOISE+`uniform float uTime;uniform float uIntensity;uniform float uMic;varying float vDisp;varying vec3 vN;varying vec3 vV;
 void main(){float t=uTime*0.35;float n=snoise(normal*1.7+t)*0.6+snoise(normal*3.4+t*1.4)*0.4;
- float disp=n*(0.10+uIntensity*0.5);vDisp=disp;vec3 pos=position+normal*disp;
+ float ripple=snoise(normal*7.0+uTime*2.2)*uMic*0.26;
+ float disp=n*(0.10+uIntensity*0.5)+ripple;vDisp=disp;vec3 pos=position+normal*disp;
  vec4 mv=modelViewMatrix*vec4(pos,1.0);vN=normalize(normalMatrix*normal);vV=-mv.xyz;gl_Position=projectionMatrix*mv;}`;
-const FRAG=`uniform vec3 uColorA;uniform vec3 uColorB;uniform float uIntensity;varying float vDisp;varying vec3 vN;varying vec3 vV;
-void main(){vec3 N=normalize(vN);vec3 V=normalize(vV);float fres=pow(1.0-clamp(dot(N,V),0.0,1.0),2.4);
- vec3 col=mix(uColorB,uColorA,clamp(vDisp*3.0+0.35,0.0,1.0));col+=uColorA*fres*(0.7+uIntensity*1.4);gl_FragColor=vec4(col,0.9);}`;
+const FRAG=`uniform vec3 uColorA;uniform vec3 uColorB;uniform vec3 uColorHot;uniform float uIntensity;uniform float uWarm;uniform float uTime;
+varying float vDisp;varying vec3 vN;varying vec3 vV;
+void main(){vec3 N=normalize(vN);vec3 V=normalize(vV);float ndv=clamp(dot(N,V),0.0,1.0);float fres=pow(1.0-ndv,2.2);
+ vec3 body=mix(uColorB,uColorA,clamp(vDisp*3.0+0.35,0.0,1.0));
+ body=mix(body,uColorHot,uWarm*(0.35+0.65*fres));
+ vec3 rim=mix(uColorA,uColorHot,uWarm)*fres*(0.8+uIntensity*1.6);
+ float pulse=0.5+0.5*sin(uTime*3.0-vDisp*14.0);
+ vec3 col=body+rim+uColorA*0.12*pulse*uIntensity;
+ gl_FragColor=vec4(col,0.86+0.14*fres);}`;
 const canvas=document.getElementById('orb');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 const scene=new THREE.Scene();const camera=new THREE.PerspectiveCamera(48,1,0.1,100);camera.position.z=3.15;
-const uniforms={uTime:{value:0},uIntensity:{value:0},uColorA:{value:new THREE.Color('#22d3ee')},uColorB:{value:new THREE.Color('#0e5f7a')}};
+const uniforms={uTime:{value:0},uIntensity:{value:0},uMic:{value:0},uWarm:{value:0},
+  uColorA:{value:new THREE.Color('#22d3ee')},uColorB:{value:new THREE.Color('#0e5f7a')},uColorHot:{value:new THREE.Color('#38bdf8')}};
 const core=new THREE.Mesh(new THREE.IcosahedronGeometry(1,32),new THREE.ShaderMaterial({uniforms,vertexShader:VERT,fragmentShader:FRAG,transparent:true}));
 const shell=new THREE.Mesh(new THREE.IcosahedronGeometry(1.28,5),new THREE.MeshBasicMaterial({color:0x22d3ee,wireframe:true,transparent:true,opacity:.10,blending:THREE.AdditiveBlending}));
-scene.add(core,shell);
+function radialTex(){const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');
+ const gr=g.createRadialGradient(128,128,0,128,128,128);
+ gr.addColorStop(0,'rgba(255,255,255,.9)');gr.addColorStop(.22,'rgba(34,211,238,.5)');
+ gr.addColorStop(.55,'rgba(34,211,238,.12)');gr.addColorStop(1,'rgba(34,211,238,0)');
+ g.fillStyle=gr;g.fillRect(0,0,256,256);return new THREE.CanvasTexture(c);}
+const haloMat=new THREE.SpriteMaterial({map:radialTex(),color:0x22d3ee,transparent:true,opacity:.45,blending:THREE.AdditiveBlending,depthWrite:false});
+const halo=new THREE.Sprite(haloMat);halo.scale.setScalar(4.2);
+const PN=700,pPos=new Float32Array(PN*3);
+for(let i=0;i<PN;i++){const u=Math.random(),v=Math.random(),th=2*Math.PI*u,ph=Math.acos(2*v-1),r=1.5+Math.random()*0.95;
+ pPos[i*3]=r*Math.sin(ph)*Math.cos(th);pPos[i*3+1]=r*Math.cos(ph);pPos[i*3+2]=r*Math.sin(ph)*Math.sin(th);}
+const pGeo=new THREE.BufferGeometry();pGeo.setAttribute('position',new THREE.BufferAttribute(pPos,3));
+const pMat=new THREE.PointsMaterial({color:0x22d3ee,size:.02,transparent:true,opacity:.5,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true});
+const points=new THREE.Points(pGeo,pMat);
+const RN=128,ringGeo=new THREE.BufferGeometry();ringGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array((RN+1)*3),3));
+const ringMat=new THREE.LineBasicMaterial({color:0x22d3ee,transparent:true,opacity:0,blending:THREE.AdditiveBlending});
+const ring=new THREE.LineLoop(ringGeo,ringMat);ring.rotation.x=-0.32;
+const orbGroup=new THREE.Group();orbGroup.add(halo,points,ring,core,shell);scene.add(orbGroup);
 function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
- const s=Math.min(1,innerWidth/720)*(innerHeight<620?0.8:1);core.scale.setScalar(s);shell.scale.setScalar(s);
- const y=(innerHeight*0.10)/(innerHeight/2);core.position.y=y;shell.position.y=y;}
+ const s=Math.min(1,innerWidth/720)*(innerHeight<620?0.8:1);
+ orbGroup.scale.setScalar(s);orbGroup.position.y=(innerHeight*0.10)/(innerHeight/2);}
 addEventListener('resize',resize);resize();
-const clock=new THREE.Clock();let orbState='idle',cur=0,micLevel=0;
+const ORB_PAL={
+ idle:{a:'#22d3ee',b:'#0e5f7a',hot:'#38bdf8',warm:0.0},
+ listening:{a:'#5eead4',b:'#0e5f7a',hot:'#22d3ee',warm:0.0},
+ thinking:{a:'#818cf8',b:'#1e3a5f',hot:'#a78bfa',warm:0.30},
+ speaking:{a:'#67e8f9',b:'#0e5f7a',hot:'#a5f3fc',warm:0.55},
+ error:{a:'#f87171',b:'#4c1d1d',hot:'#ef4444',warm:0.90}};
+const tgtA=new THREE.Color('#22d3ee'),tgtB=new THREE.Color('#0e5f7a'),tgtHot=new THREE.Color('#38bdf8');let tgtWarm=0;
+function setOrbColors(state){const p=ORB_PAL[state]||ORB_PAL.idle;tgtA.set(p.a);tgtB.set(p.b);tgtHot.set(p.hot);tgtWarm=p.warm;}
+const clock=new THREE.Clock();let orbState='idle',cur=0,micLevel=0,ringActive=0,speakLevel=0;
+window.micSpectrum=null;
 function animate(){requestAnimationFrame(animate);const t=clock.getElapsedTime();uniforms.uTime.value=t;let target;
  if(orbState==='thinking')target=0.34+0.06*Math.sin(t*6.0);
- else if(orbState==='speaking')target=0.42+0.30*Math.abs(Math.sin(t*7.0));
+ else if(orbState==='speaking')target=0.34+speakLevel*0.9+0.05*Math.sin(t*7.0);
  else if(orbState==='listening')target=0.16+micLevel*1.1+0.05*Math.sin(t*4.0);
  else target=0.05+0.035*Math.sin(t*1.4);
- cur+=(target-cur)*0.08;uniforms.uIntensity.value=cur;const sp=0.0016+cur*0.010;
- core.rotation.y+=sp;core.rotation.x+=sp*0.45;shell.rotation.y-=sp*0.7;shell.rotation.x+=sp*0.3;renderer.render(scene,camera);}
+ cur+=(target-cur)*0.08;uniforms.uIntensity.value=cur;
+ uniforms.uColorA.value.lerp(tgtA,0.05);uniforms.uColorB.value.lerp(tgtB,0.05);uniforms.uColorHot.value.lerp(tgtHot,0.05);
+ uniforms.uWarm.value+=(tgtWarm-uniforms.uWarm.value)*0.05;
+ const micTarget=orbState==='listening'?micLevel:(orbState==='speaking'?speakLevel:0);
+ uniforms.uMic.value+=(micTarget-uniforms.uMic.value)*0.15;
+ haloMat.color.copy(uniforms.uColorA.value);haloMat.opacity=0.30+cur*0.9;
+ pMat.color.copy(uniforms.uColorA.value);pMat.opacity=0.28+cur*0.6;
+ const wantRing=(orbState==='listening'||orbState==='speaking')?1:0;
+ ringActive+=(wantRing-ringActive)*0.08;ringMat.opacity=ringActive*0.55;ringMat.color.copy(uniforms.uColorA.value);
+ const rp=ring.geometry.attributes.position.array,RB=1.62;
+ for(let i=0;i<=RN;i++){const a=i/RN*Math.PI*2;let amp;
+   if(orbState==='listening'&&window.micSpectrum){amp=window.micSpectrum[Math.min(i,RN-i)]/255;}
+   else{amp=(0.35+0.65*Math.abs(Math.sin(a*3.0+t*3.0)))*cur;}
+   const r=RB+(amp*0.55+0.03*Math.sin(a*6.0+t*2.0))*ringActive;
+   rp[i*3]=Math.cos(a)*r;rp[i*3+1]=Math.sin(a)*r;rp[i*3+2]=0;}
+ ring.geometry.attributes.position.needsUpdate=true;
+ const sp=0.0016+cur*0.010;
+ core.rotation.y+=sp;core.rotation.x+=sp*0.45;shell.rotation.y-=sp*0.7;shell.rotation.x+=sp*0.3;
+ points.rotation.y+=sp*0.4;points.rotation.x+=sp*0.15;
+ renderer.render(scene,camera);}
 animate();
 
 /* ══════════ elementi ══════════ */
@@ -186,22 +256,38 @@ function md(src){const L=esc(src).split('\n');let h='',i=0;const inl=t=>t.replac
 function addLine(who,html){const d=document.createElement('div');d.className='line '+(who==='user'?'u':'d');
  d.innerHTML='<div class="who">'+(who==='user'?'TU':'DANTE')+'</div><div class="txt">'+html+'</div>';lines.appendChild(d);scriptEl.scrollTop=scriptEl.scrollHeight;}
 
-/* ══════════ voce out (TTS) ══════════ */
-let speakOn=true,itVoice=null;
-function pickVoice(){const v=speechSynthesis.getVoices();itVoice=v.find(x=>/it(-|_)?IT/i.test(x.lang))||v.find(x=>x.lang&&x.lang.startsWith('it'))||null;}
-if('speechSynthesis'in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice;}
+/* ══════════ voce out (TTS Piper, self-hosted) ══════════ */
+let speakOn=true,ttsCtx=null,curAudioSrc=null;  /* speakLevel dichiarata nella sezione orb */
 function stripMd(t){return t.replace(/[#*`|>_]/g,'').replace(/\-{2,}/g,'').replace(/\s+/g,' ').trim();}
-function speak(text,after){
-  if(!speakOn||!('speechSynthesis'in window)||!text.trim()){if(after)after();return;}
-  const u=new SpeechSynthesisUtterance(stripMd(text).slice(0,700));u.lang='it-IT';if(itVoice)u.voice=itVoice;u.rate=1.06;
+function stopSpeaking(){ try{ if(curAudioSrc){curAudioSrc.onended=null;curAudioSrc.stop();} }catch(_){}; curAudioSrc=null; speakLevel=0; }
+async function speak(text,after){
+  if(!speakOn||!text.trim()){ if(after)after(); return; }
   setPhase('speaking','DANTE parla');
-  u.onend=()=>{if(after)after();};u.onerror=()=>{if(after)after();};
-  speechSynthesis.cancel();speechSynthesis.speak(u);
+  try{
+    const res=await fetch('/tts',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:stripMd(text).slice(0,700)}),credentials:'same-origin'});
+    if(res.status===204){ if(after)after(); return; }
+    const buf=await res.arrayBuffer();
+    ttsCtx=ttsCtx||new (window.AudioContext||window.webkitAudioContext)();
+    if(ttsCtx.state==='suspended'){ try{await ttsCtx.resume();}catch(_){} }
+    const audioBuf=await ttsCtx.decodeAudioData(buf);
+    const src=ttsCtx.createBufferSource(); src.buffer=audioBuf;
+    const an=ttsCtx.createAnalyser(); an.fftSize=256; const data=new Uint8Array(an.frequencyBinCount);
+    src.connect(an); an.connect(ttsCtx.destination); curAudioSrc=src;
+    (function loop(){ if(curAudioSrc!==src)return; an.getByteTimeDomainData(data);
+      let s=0;for(let i=0;i<data.length;i++){const v=(data[i]-128)/128;s+=v*v;}
+      speakLevel=Math.min(1,Math.sqrt(s/data.length)*3.2); requestAnimationFrame(loop); })();
+    src.onended=()=>{ if(curAudioSrc===src){curAudioSrc=null;speakLevel=0;} if(after)after(); };
+    src.start();
+  }catch(e){ console.log('[tts]',e); if(after)after(); }
 }
 
 /* ══════════ conversazione ══════════ */
 let ws,convo=false,phase='idle',finalText='',curMsg=null;
 function setPhase(p,label){phase=p;orbState=(p==='listening'||p==='thinking'||p==='speaking')?p:'idle';
+ setOrbColors(orbState);
+ const persona={idle:'in attesa',listening:'in ascolto',thinking:'concentrato',speaking:'loquace'}[orbState]||'in attesa';
+ const pe=document.getElementById('persona'); if(pe)pe.textContent=persona;
  phaseEl.textContent=label||({idle:'tocca il microfono per parlare',listening:'ti ascolto…',thinking:'sto controllando…',speaking:'DANTE parla'}[p]);}
 function setConn(s,cls){conn.textContent=s;dot.className='dot '+(cls||'')}
 
@@ -214,12 +300,15 @@ function connect(){const proto=location.protocol==='https:'?'wss':'ws';ws=new We
     const c=document.createElement('span');c.className='chip';
     c.textContent=d.name.replace('mcp__neoflux-','').replace(/__/g,' ').replace('ToolSearch','ricerca');chips.appendChild(c);}
   else if(d.type==='text'){if(!curMsg)return;curMsg.raw+=d.text;subDante.innerHTML=md(curMsg.raw);}
-  else if(d.type==='error'){subDante.innerHTML='<span style="color:var(--err)">Errore: '+esc(d.text)+'</span>';finishTurn('');}
+  else if(d.type==='error'){subDante.innerHTML='<span style="color:var(--err)">Errore: '+esc(d.text)+'</span>';
+    setOrbColors('error');setTimeout(()=>setOrbColors(orbState),1600);finishTurn('');}
   else if(d.type==='done'){const said=curMsg?curMsg.raw:'';if(said)addLine('dante',md(said));finishTurn(said);}};
 }
-function ask(text){ if(!ws||ws.readyState!==1)return;
+function ask(text,moodHint){ if(!ws||ws.readyState!==1)return;
+  setMoodFromHint(moodHint);
   subUser.textContent='» '+text; addLine('user',esc(text)); chips.innerHTML=''; subDante.innerHTML='';
-  curMsg={raw:''}; setPhase('thinking','sto pensando…'); ws.send(JSON.stringify({message:text})); }
+  curMsg={raw:''}; setPhase('thinking','sto pensando…');
+  ws.send(JSON.stringify({message:text, mood_hint:moodHint||''})); }
 function finishTurn(said){ curMsg=null;
   // parla la risposta, poi (se in conversazione) torna in ascolto
   speak(said, ()=>{ if(convo) listen(); else setPhase('idle'); }); }
@@ -236,10 +325,13 @@ async function initMic(){
     const ctx=new (window.AudioContext||window.webkitAudioContext)();
     const src=ctx.createMediaStreamSource(micStream);
     analyser=ctx.createAnalyser();analyser.fftSize=256;micData=new Uint8Array(analyser.frequencyBinCount);
+    window.micSpectrum=new Uint8Array(analyser.frequencyBinCount);
     src.connect(analyser);micReady=true;
-    (function loop(){ if(!analyser)return; analyser.getByteTimeDomainData(micData);
+    (function loop(){ if(!analyser)return; analyser.getByteTimeDomainData(micData); analyser.getByteFrequencyData(window.micSpectrum);
       let s=0;for(let i=0;i<micData.length;i++){const v=(micData[i]-128)/128;s+=v*v;}
-      micLevel=Math.min(1,Math.sqrt(s/micData.length)*3.6); requestAnimationFrame(loop);})();
+      micLevel=Math.min(1,Math.sqrt(s/micData.length)*3.6);
+      if(micBtn)micBtn.style.transform='scale('+(1+micLevel*0.14)+')';
+      requestAnimationFrame(loop);})();
     return true;
   }catch(err){ console.log('[mic error]',err.name,err.message);
     hint.textContent='Microfono non accessibile ('+err.name+'). macOS: Impostazioni › Privacy e sicurezza › Microfono › attiva il browser, poi ricarica.';
@@ -248,7 +340,7 @@ async function initMic(){
 function stopRec(){ try{ if(mediaRec&&mediaRec.state==='recording')mediaRec.stop(); }catch(_){}}
 function listen(){
   if(!micReady||recording)return;
-  recording=true; spoke=false; recChunks=[]; speechSynthesis.cancel();
+  recording=true; spoke=false; recChunks=[]; stopSpeaking();
   setPhase('listening','ti ascolto…'); micBtn.classList.add('live'); subUser.textContent='';
   const mime=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':(MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':'');
   try{ mediaRec=mime?new MediaRecorder(micStream,{mimeType:mime}):new MediaRecorder(micStream); }
@@ -269,36 +361,57 @@ async function onRecStop(){
   const blob=new Blob(recChunks,{type:(mediaRec&&mediaRec.mimeType)||'audio/webm'});
   if(!spoke||blob.size<1500){ if(convo)setTimeout(listen,150); else setPhase('idle'); return; }
   setPhase('thinking','trascrivo…');
-  const text=await transcribe(blob);
-  if(text&&text.trim()){ ask(text); }
+  const {text,moodHint}=await transcribe(blob);
+  if(text&&text.trim()){ ask(text,moodHint); }
   else{ hint.textContent='Non ho capito, riprova pure'; if(convo)listen(); else setPhase('idle'); }
 }
 async function transcribe(blob){
   try{
     const fd=new FormData(); fd.append('audio',blob,'a.webm');
     const r=await fetch('/stt',{method:'POST',body:fd,credentials:'same-origin'});
-    if(!r.ok){ hint.textContent='Trascrizione: errore '+r.status; return ''; }
-    const j=await r.json(); return j.text||'';
-  }catch(e){ hint.textContent='Trascrizione non raggiungibile: '+e.message; return ''; }
+    if(!r.ok){ hint.textContent='Trascrizione: errore '+r.status; return {text:'',moodHint:''}; }
+    const j=await r.json(); return {text:j.text||'', moodHint:j.mood_hint||''};
+  }catch(e){ hint.textContent='Trascrizione non raggiungibile: '+e.message; return {text:'',moodHint:''}; }
 }
 async function startConvo(){ if(!canRecord){setPhase('idle','registrazione non supportata');hint.textContent='Il browser non supporta la registrazione audio';return;}
  const ok=await initMic(); if(!ok)return;
  convo=true; subDante.innerHTML=''; listen();
  hint.textContent='Sto ascoltando — parla, poi fai una pausa. Ritocca per fermare.'; }
-function stopConvo(){ convo=false; micBtn.classList.remove('live'); stopRec(); speechSynthesis.cancel();
+function stopConvo(){ convo=false; micBtn.classList.remove('live'); stopRec(); stopSpeaking();
  setPhase('idle'); hint.textContent='Parla naturalmente · DANTE ti ascolta e risponde a voce'; }
-micBtn.onclick=()=>{ if(phase==='speaking'){ speechSynthesis.cancel(); if(convo)listen(); return; } convo?stopConvo():startConvo(); };
+micBtn.onclick=()=>{ if(phase==='speaking'){ stopSpeaking(); if(convo)listen(); return; } convo?stopConvo():startConvo(); };
 canvas.style.pointerEvents='auto'; canvas.onclick=()=>micBtn.click();
 
 /* ══════════ controlli ══════════ */
-spkBtn.onclick=()=>{speakOn=!speakOn;spkBtn.classList.toggle('on',speakOn);spkBtn.textContent=speakOn?'🔊':'🔇';if(!speakOn)speechSynthesis.cancel();};
+spkBtn.onclick=()=>{speakOn=!speakOn;spkBtn.classList.toggle('on',speakOn);spkBtn.textContent=speakOn?'🔊':'🔇';if(!speakOn)stopSpeaking();};
 scriptBtn.onclick=()=>{scriptEl.classList.toggle('show');scriptBtn.classList.toggle('on');};
 kbBtn.onclick=()=>{textbar.classList.toggle('show');kbBtn.classList.toggle('on');if(textbar.classList.contains('show'))txt.focus();};
 txt.addEventListener('keydown',e=>{if(e.key==='Enter'){const t=txt.value.trim();if(t){txt.value='';ask(t);}}});
 
+/* ══════════ umore (indicatore visivo) ══════════ */
+const MOODS={
+ neutro:{t:'neutro',c:'#22d3ee'}, teso:{t:'teso',c:'#ef4444'}, agitato:{t:'agitato',c:'#f59e0b'},
+ stanco:{t:'stanco',c:'#818cf8'}, energico:{t:'energico',c:'#22c55e'}, incerto:{t:'incerto',c:'#a78bfa'}};
+function setMoodFromHint(hint){const md=document.getElementById('mdot'),mt=document.getElementById('mtxt');if(!md)return;
+ let key='neutro'; const h=(hint||'').toLowerCase();
+ if(h.includes('teso'))key='teso'; else if(h.includes('agitat')||h.includes('concitat'))key='agitato';
+ else if(h.includes('stanc')||h.includes('scoraggiat')||h.includes('monoton'))key='stanco';
+ else if(h.includes('energic')||h.includes('coinvolt'))key='energico'; else if(h.includes('incert')||h.includes('esitant'))key='incerto';
+ const m=MOODS[key]; md.style.background=m.c; md.style.boxShadow='0 0 8px '+m.c; mt.textContent=hint?m.t:'—';}
+
 function tick(){const d=new Date();document.getElementById('clock').textContent=[d.getHours(),d.getMinutes(),d.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');}
 setInterval(tick,1000);tick();
 connect();
+
+/* ══════════ boot / tap-to-start (sblocca anche l'audio) ══════════ */
+(function boot(){
+ const log=document.getElementById('bootlog'),el=document.getElementById('boot'),btn=document.getElementById('bootStart');
+ const seq=['inizializzazione core neurale…','moduli MCP · neoflux montati','handshake canale sicuro…','sintesi vocale pronta','DANTE online'];
+ let i=0;(function step(){if(i<seq.length){log.innerHTML+=(i?'<br>':'')+'▹ '+seq[i++];setTimeout(step,360);}})();
+ function go(){el.classList.add('gone');setTimeout(()=>el.remove(),820);
+   try{const A=window.AudioContext||window.webkitAudioContext;if(A){ttsCtx=ttsCtx||new A();if(ttsCtx.state==='suspended')ttsCtx.resume();}}catch(_){}}
+ el.addEventListener('click',go);btn.addEventListener('click',e=>{e.stopPropagation();go();});
+})();
 </script>
 </body>
 </html>

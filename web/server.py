@@ -17,13 +17,15 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import io
 import os
 import secrets
 import tempfile
+import wave
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
+from fastapi import Body, Depends, FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi.responses import HTMLResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 
@@ -37,6 +39,14 @@ from claude_agent_sdk import (
 
 # import di agent.config: attiva anche il loader del .env (ANTHROPIC/OAUTH + DANTE_WEB_*)
 from agent.config import build_options
+
+# Lettura leggera dell'umore dalla voce (solo prosodia, numpy). Import difensivo:
+# è un segnale cosmetico, non deve mai far cadere la trascrizione se numpy manca.
+try:
+    from agent.prosody import extract_prosody, mood_phrase as _mood_phrase
+except Exception:  # pragma: no cover
+    extract_prosody = None
+    _mood_phrase = None
 
 _STATIC = Path(__file__).resolve().parent / "static"
 _WEB_USER = os.environ.get("DANTE_WEB_USER", "neoflux")
@@ -119,13 +129,61 @@ async def stt(audio: UploadFile = File(...), _auth: bool = Depends(_require_auth
             return " ".join(s.text for s in segments).strip()
 
         text = await asyncio.to_thread(_run)
-        return {"text": text}
+
+        # Prosodia → traccia di umore, calcolata sullo STESSO wav 16k mono (costo ~10 ms).
+        # Fail-open: qualsiasi errore lascia hint="" e non tocca la trascrizione.
+        hint = ""
+        if extract_prosody is not None and text:
+            try:
+                feat = await asyncio.to_thread(extract_prosody, wav, text)
+                hint = _mood_phrase(feat)
+            except Exception:
+                hint = ""
+        return {"text": text, "mood_hint": hint}
     finally:
         for p in (src, wav):
             try:
                 os.remove(p)
             except OSError:
                 pass
+
+
+# ── TTS locale (Piper) — voce italiana sul box, privata, ~0.15s a frase ──
+_PIPER_MODEL = os.environ.get(
+    "DANTE_PIPER_MODEL",
+    str(Path(__file__).resolve().parent.parent / "models" / "it_IT-paola-medium.onnx"),
+)
+_piper = None
+_piper_lock = asyncio.Lock()
+
+
+async def _get_piper():
+    global _piper
+    if _piper is None:
+        async with _piper_lock:
+            if _piper is None:
+                from piper import PiperVoice
+                _piper = await asyncio.to_thread(PiperVoice.load, _PIPER_MODEL)
+    return _piper
+
+
+@app.post("/tts")
+async def tts(payload: dict = Body(...), _auth: bool = Depends(_require_auth)) -> Response:
+    text = (payload.get("text") or "").strip()
+    if not text:
+        return Response(status_code=204)
+    voice = await _get_piper()
+
+    def _run() -> bytes:
+        from piper import SynthesisConfig
+        cfg = SynthesisConfig(length_scale=1.08)  # un filo più lento = più caldo/JARVIS
+        buf = io.BytesIO()
+        with wave.open(buf, "wb") as wav_file:
+            voice.synthesize_wav(text, wav_file, syn_config=cfg)
+        return buf.getvalue()
+
+    data = await asyncio.to_thread(_run)
+    return Response(content=data, media_type="audio/wav")
 
 
 def _ws_authorized(websocket: WebSocket) -> bool:
@@ -157,7 +215,13 @@ async def ws(websocket: WebSocket) -> None:
                 message = (data.get("message") or "").strip()
                 if not message:
                     continue
-                await client.query(message)
+                # Traccia di umore (dalla voce) come contesto effimero, solo per QUESTO turno.
+                # Stesso tag "[UMORE UTENTE: ...]" che il system prompt insegna a interpretare.
+                # È per-turno (il client ws è persistente, quindi NON va messo nel system prompt,
+                # che resterebbe congelato al primo turno). Non è un ordine: solo un indizio.
+                hint = (data.get("mood_hint") or "").strip()
+                payload = f"[UMORE UTENTE: {hint}]\n{message}" if hint else message
+                await client.query(payload)
                 async for m in client.receive_response():
                     if isinstance(m, AssistantMessage):
                         for block in m.content:

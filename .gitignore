@@ -6,6 +6,9 @@ config/virtualizor.yaml
 # Log e audit
 logs/*.log
 
+# Modelli TTS (grandi, scaricati da install.sh)
+models/
+
 # Python
 .venv/
 __pycache__/
