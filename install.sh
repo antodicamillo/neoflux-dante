@@ -34,13 +34,15 @@ chmod 600 config/*.yaml 2>/dev/null || true   # i segreti restano leggibili solo
 command -v claude >/dev/null 2>&1 \
   && echo "CLI claude: $(claude --version 2>&1 | head -1)" \
   || echo "ATTENZIONE: CLI 'claude' non trovata → installa: npm i -g @anthropic-ai/claude-code"
-[ -n "${ANTHROPIC_API_KEY:-}" ] \
-  && echo "ANTHROPIC_API_KEY: presente" \
-  || echo "ATTENZIONE: ANTHROPIC_API_KEY non impostata (necessaria su host headless)."
+if [ -f .env ] && grep -qE '^(CLAUDE_CODE_OAUTH_TOKEN|ANTHROPIC_API_KEY)=.+' .env; then
+  echo "Auth: configurata nel file .env"
+else
+  echo "ATTENZIONE: auth non configurata. Crea .env con CLAUDE_CODE_OAUTH_TOKEN (abbonamento) o ANTHROPIC_API_KEY."
+fi
 
 echo
 echo "Fatto. Prossimi passi:"
 echo "  1) Compila config/inventory.yaml e config/virtualizor.yaml"
-echo "  2) export ANTHROPIC_API_KEY=sk-ant-...   (auth headless)"
+echo "  2) Crea .env con CLAUDE_CODE_OAUTH_TOKEN (da 'claude setup-token' sul Mac)"
 echo "  3) Verifica rete verso la 4085 (whitelist IP o WireGuard)"
 echo "  4) ./.venv/bin/python -m agent.dante"

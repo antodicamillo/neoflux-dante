@@ -49,11 +49,11 @@ cd ~/neoflux-dante
 - `config/inventory.yaml` — host SSH (VPS esterne + VPS Neoflux da ispezionare dentro)
 - `config/virtualizor.yaml` — master Virtualizor (IP/porta e credenziali stanno
   QUI, non nel repo), `admin_auth: true`, schema `adminapikey`/`adminapipass`
-- **Auth headless** (niente browser sul server): usa una API key
-  ```bash
-  export ANTHROPIC_API_KEY=sk-ant-...      # da console.anthropic.com
-  # rendila persistente in /etc/environment o nel systemd unit futuro
-  ```
+- **Auth headless** (niente browser sul server) — via **abbonamento**, senza costi a consumo:
+  1. Sul **Mac**: `claude setup-token` → login browser → copia il token (valido 1 anno)
+  2. Sul **box**, in `.env`: `CLAUDE_CODE_OAUTH_TOKEN=<token>`
+  DANTE lo carica in automatico. NON impostare `ANTHROPIC_API_KEY` (avrebbe la precedenza
+  e forzerebbe il billing a consumo). Il token è statico: rinnovalo tra ~1 anno.
 
 ## 6. Connettività verso l'infra (scegli una)
 **A — Whitelist IP statico (rapido):** sul server Virtualizor autorizza l'IP pubblico
