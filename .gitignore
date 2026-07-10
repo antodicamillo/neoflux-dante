@@ -1,0 +1,16 @@
+# Segreti e configurazione locale
+config/inventory.yaml
+config/virtualizor.yaml
+.env
+
+# Log e audit
+logs/*.log
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# OS
+.DS_Store

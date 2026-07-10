@@ -1,0 +1,5 @@
+claude-agent-sdk>=0.2.115
+mcp[cli]>=1.28.1
+paramiko>=5.0.0
+PyYAML>=6.0.3
+httpx>=0.28.1

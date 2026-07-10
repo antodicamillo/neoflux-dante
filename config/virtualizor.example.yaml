@@ -1,0 +1,21 @@
+# Master Virtualizor di Neoflux — ESEMPIO
+# Copia in config/virtualizor.yaml (gitignored) e inserisci le credenziali reali.
+# API key/pass: pannello Admin → Configuration → Server Info → nodo Master.
+# Servono credenziali con permessi di sola lettura, se disponibili.
+
+masters:
+  main:
+    host: 203.0.113.5          # IP o FQDN del master Virtualizor
+    port: 4085                 # porta Admin API (HTTPS)
+    apikey: "LA_TUA_API_KEY"
+    apipass: "LA_TUA_API_PASS"
+    verify_ssl: false          # true solo se il master ha un certificato valido
+    description: "Master Virtualizor principale"
+
+  # Altri master, se ne avete più di uno:
+  # secondary:
+  #   host: 203.0.113.6
+  #   port: 4085
+  #   apikey: "..."
+  #   apipass: "..."
+  #   verify_ssl: false

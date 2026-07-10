@@ -1,0 +1,27 @@
+# Inventario infrastruttura Neoflux — ESEMPIO
+# Copia questo file in config/inventory.yaml (gitignored) e inserisci gli host reali.
+# In Fase 1 servono solo credenziali di SOLA LETTURA (idealmente un utente SSH
+# dedicato con permessi minimi).
+
+hosts:
+  web-01:
+    hostname: 203.0.113.10      # IP o FQDN
+    port: 22
+    username: dante-ro          # consigliato: utente dedicato read-only
+    key_filename: ~/.ssh/dante_ed25519
+    description: "Web server principale (Nginx + PHP-FPM)"
+
+  db-01:
+    hostname: 203.0.113.20
+    port: 22
+    username: dante-ro
+    key_filename: ~/.ssh/dante_ed25519
+    description: "Database MariaDB"
+
+  # Esempio con password invece della chiave (sconsigliato, preferisci le chiavi):
+  # legacy-01:
+  #   hostname: 203.0.113.30
+  #   port: 2222
+  #   username: readonly
+  #   password: "cambia-me"
+  #   description: "Server legacy"
