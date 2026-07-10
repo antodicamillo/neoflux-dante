@@ -224,34 +224,17 @@ function finishTurn(said){ curMsg=null;
   // parla la risposta, poi (se in conversazione) torna in ascolto
   speak(said, ()=>{ if(convo) listen(); else setPhase('idle'); }); }
 
-/* ══════════ voce in (STT) ══════════ */
-const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let rec=null,recRunning=false;
-if(SR){rec=new SR();rec.lang='it-IT';rec.interimResults=true;rec.continuous=false;rec.maxAlternatives=1;
- rec.onstart=()=>{recRunning=true;};
- rec.onresult=e=>{let interim='',fin='';for(const r of e.results){if(r.isFinal)fin+=r[0].transcript;else interim+=r[0].transcript;}
-   if(fin)finalText=fin; subUser.textContent='» '+(fin||interim);};
- rec.onerror=ev=>{recRunning=false;
-   const m={'no-speech':'non ho sentito nulla — parla più vicino/forte','audio-capture':'NESSUN microfono rilevato dal browser','network':'problema di rete col servizio vocale di Google','not-allowed':'permesso microfono NEGATO','service-not-allowed':'microfono bloccato dal sistema'}[ev.error]||('errore vocale: '+ev.error);
-   hint.textContent=m; console.log('[STT error]',ev.error);
-   if(ev.error==='not-allowed'||ev.error==='service-not-allowed'||ev.error==='audio-capture'){convo=false;micBtn.classList.remove('live');
-     setPhase('idle','microfono non disponibile');}
- };
- rec.onend=()=>{recRunning=false;
-   const q=finalText.trim();finalText='';
-   if(q){ ask(q); }
-   else if(convo && phase==='listening'){ setTimeout(()=>{ if(convo)listen(); },250); } // niente parlato: riascolta
- };
-}
-function listen(){ if(!SR||recRunning)return; setPhase('listening','ti ascolto…'); micBtn.classList.add('live'); finalText='';
- try{ speechSynthesis.cancel(); rec.start(); }catch(_){ } }
-/* misuratore microfono reale: diagnostica (l'orb reagisce alla voce) + reattività */
-let micReady=false,analyser=null,micData=null;
+/* ══════════ voce in — registrazione + Whisper sul box (privato, ogni browser) ══════════ */
+const canRecord=!!(navigator.mediaDevices&&window.MediaRecorder);
+let micReady=false,analyser=null,micData=null,micStream=null;
+let recording=false,mediaRec=null,recChunks=[],spoke=false;
+
 async function initMic(){
   if(micReady)return true;
   try{
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    micStream=await navigator.mediaDevices.getUserMedia({audio:true});
     const ctx=new (window.AudioContext||window.webkitAudioContext)();
-    const src=ctx.createMediaStreamSource(stream);
+    const src=ctx.createMediaStreamSource(micStream);
     analyser=ctx.createAnalyser();analyser.fftSize=256;micData=new Uint8Array(analyser.frequencyBinCount);
     src.connect(analyser);micReady=true;
     (function loop(){ if(!analyser)return; analyser.getByteTimeDomainData(micData);
@@ -262,11 +245,48 @@ async function initMic(){
     hint.textContent='Microfono non accessibile ('+err.name+'). macOS: Impostazioni › Privacy e sicurezza › Microfono › attiva il browser, poi ricarica.';
     return false; }
 }
-async function startConvo(){ if(!SR){setPhase('idle','riconoscimento vocale non supportato');hint.textContent='Usa Chrome o Edge per la voce, oppure scrivi con ⌨';return;}
- const ok=await initMic(); if(!ok){return;}
- convo=true; subDante.innerHTML=''; listen(); hint.textContent='Sto ascoltando — parla pure. Se l\'orb pulsa quando parli, il mic funziona. Ritocca per fermare.'; }
-function stopConvo(){ convo=false; micBtn.classList.remove('live'); try{rec&&rec.stop();}catch(_){}
- speechSynthesis.cancel(); setPhase('idle'); hint.textContent='Parla naturalmente · DANTE ti ascolta e risponde a voce'; }
+function stopRec(){ try{ if(mediaRec&&mediaRec.state==='recording')mediaRec.stop(); }catch(_){}}
+function listen(){
+  if(!micReady||recording)return;
+  recording=true; spoke=false; recChunks=[]; speechSynthesis.cancel();
+  setPhase('listening','ti ascolto…'); micBtn.classList.add('live'); subUser.textContent='';
+  const mime=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':(MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':'');
+  try{ mediaRec=mime?new MediaRecorder(micStream,{mimeType:mime}):new MediaRecorder(micStream); }
+  catch(e){ recording=false; micBtn.classList.remove('live'); hint.textContent='Registrazione non supportata ('+e.name+')'; return; }
+  mediaRec.ondataavailable=e=>{ if(e.data&&e.data.size)recChunks.push(e.data); };
+  mediaRec.onstop=onRecStop; mediaRec.start();
+  const t0=performance.now(); let lastLoud=t0;
+  (function vad(){ if(!recording||!mediaRec||mediaRec.state!=='recording')return;
+    const now=performance.now();
+    if(micLevel>0.11){spoke=true;lastLoud=now;subUser.textContent='» …';}
+    if(spoke&&now-lastLoud>1100){stopRec();return;}      // pausa = fine turno
+    if(now-t0>15000){stopRec();return;}                   // limite max
+    if(!spoke&&now-t0>7000){stopRec();return;}            // nessuna voce
+    requestAnimationFrame(vad);})();
+}
+async function onRecStop(){
+  recording=false; micBtn.classList.remove('live');
+  const blob=new Blob(recChunks,{type:(mediaRec&&mediaRec.mimeType)||'audio/webm'});
+  if(!spoke||blob.size<1500){ if(convo)setTimeout(listen,150); else setPhase('idle'); return; }
+  setPhase('thinking','trascrivo…');
+  const text=await transcribe(blob);
+  if(text&&text.trim()){ ask(text); }
+  else{ hint.textContent='Non ho capito, riprova pure'; if(convo)listen(); else setPhase('idle'); }
+}
+async function transcribe(blob){
+  try{
+    const fd=new FormData(); fd.append('audio',blob,'a.webm');
+    const r=await fetch('/stt',{method:'POST',body:fd,credentials:'same-origin'});
+    if(!r.ok){ hint.textContent='Trascrizione: errore '+r.status; return ''; }
+    const j=await r.json(); return j.text||'';
+  }catch(e){ hint.textContent='Trascrizione non raggiungibile: '+e.message; return ''; }
+}
+async function startConvo(){ if(!canRecord){setPhase('idle','registrazione non supportata');hint.textContent='Il browser non supporta la registrazione audio';return;}
+ const ok=await initMic(); if(!ok)return;
+ convo=true; subDante.innerHTML=''; listen();
+ hint.textContent='Sto ascoltando — parla, poi fai una pausa. Ritocca per fermare.'; }
+function stopConvo(){ convo=false; micBtn.classList.remove('live'); stopRec(); speechSynthesis.cancel();
+ setPhase('idle'); hint.textContent='Parla naturalmente · DANTE ti ascolta e risponde a voce'; }
 micBtn.onclick=()=>{ if(phase==='speaking'){ speechSynthesis.cancel(); if(convo)listen(); return; } convo?stopConvo():startConvo(); };
 canvas.style.pointerEvents='auto'; canvas.onclick=()=>micBtn.click();
 

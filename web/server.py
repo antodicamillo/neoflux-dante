@@ -15,12 +15,14 @@ all'infrastruttura, non va lasciato aperto sulla LAN.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import os
 import secrets
+import tempfile
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
@@ -68,7 +70,62 @@ def index(_auth: bool = Depends(_require_auth)) -> str:
 
 @app.get("/health")
 def health() -> dict:
-    return {"ok": True, "auth": bool(_WEB_PASS)}
+    return {"ok": True, "auth": bool(_WEB_PASS), "stt": _WHISPER_MODEL}
+
+
+# ── STT locale (Whisper) — trascrizione sul box, privata, indipendente dal browser ──
+_WHISPER_MODEL = os.environ.get("DANTE_WHISPER_MODEL", "small")
+_whisper = None
+_whisper_lock = asyncio.Lock()
+
+
+async def _get_whisper():
+    global _whisper
+    if _whisper is None:
+        async with _whisper_lock:
+            if _whisper is None:
+                from faster_whisper import WhisperModel
+                _whisper = await asyncio.to_thread(
+                    WhisperModel, _WHISPER_MODEL, device="cpu", compute_type="int8"
+                )
+    return _whisper
+
+
+@app.post("/stt")
+async def stt(audio: UploadFile = File(...), _auth: bool = Depends(_require_auth)) -> dict:
+    raw = await audio.read()
+    if not raw:
+        return {"text": ""}
+    src = tempfile.mktemp(suffix=".webm")
+    wav = src + ".wav"
+    try:
+        with open(src, "wb") as fh:
+            fh.write(raw)
+        proc = await asyncio.create_subprocess_exec(
+            "ffmpeg", "-y", "-i", src, "-ar", "16000", "-ac", "1", wav,
+            stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL,
+        )
+        await proc.wait()
+        model = await _get_whisper()
+
+        def _run() -> str:
+            # initial_prompt orienta Whisper sul vocabolario di dominio (acronimi inclusi)
+            segments, _info = model.transcribe(
+                wav, language="it", beam_size=1, vad_filter=True,
+                initial_prompt="Comando per l'assistente DANTE sull'infrastruttura Neoflux: "
+                               "VPS, server, Virtualizor, Proxmox, cPanel, nodo, RAM, CPU, disco, "
+                               "banda, servizio, container, host.",
+            )
+            return " ".join(s.text for s in segments).strip()
+
+        text = await asyncio.to_thread(_run)
+        return {"text": text}
+    finally:
+        for p in (src, wav):
+            try:
+                os.remove(p)
+            except OSError:
+                pass
 
 
 def _ws_authorized(websocket: WebSocket) -> bool:
