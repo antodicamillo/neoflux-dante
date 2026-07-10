@@ -23,6 +23,7 @@ from pathlib import Path
 from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.staticfiles import StaticFiles
 
 from claude_agent_sdk import (
     AssistantMessage,
@@ -41,6 +42,9 @@ _WEB_PASS = os.environ.get("DANTE_WEB_PASSWORD")
 
 app = FastAPI(title="DANTE")
 _security = HTTPBasic(auto_error=True)
+
+# Asset statici (three.js, font, ecc.) — pubblici, non sensibili. I dati passano dal /ws autenticato.
+app.mount("/static", StaticFiles(directory=str(_STATIC)), name="static")
 
 
 def _valid(user: str, pwd: str) -> bool:
