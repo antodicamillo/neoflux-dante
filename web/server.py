@@ -24,6 +24,8 @@ import tempfile
 import wave
 from pathlib import Path
 
+import httpx
+
 from fastapi import Body, Depends, FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -152,7 +154,11 @@ async def stt(audio: UploadFile = File(...), _auth: bool = Depends(_require_auth
                 pass
 
 
-# ── TTS locale (Piper) — voce italiana sul box, privata, ~0.15s a frase ──
+# ── TTS: ElevenLabs (qualità JARVIS) come primario, Piper come ripiego locale ──
+_EL_KEY = os.environ.get("ELEVENLABS_API_KEY")
+_EL_VOICE = os.environ.get("ELEVENLABS_VOICE_ID", "JBFqnCBsd6RMkjVDRZzb")  # George (default)
+_EL_MODEL = os.environ.get("ELEVENLABS_MODEL", "eleven_flash_v2_5")        # bassa latenza, italiano
+
 _PIPER_MODEL = os.environ.get(
     "DANTE_PIPER_MODEL",
     str(Path(__file__).resolve().parent.parent / "models" / "it_IT-riccardo-x_low.onnx"),
@@ -171,23 +177,45 @@ async def _get_piper():
     return _piper
 
 
-@app.post("/tts")
-async def tts(payload: dict = Body(...), _auth: bool = Depends(_require_auth)) -> Response:
-    text = (payload.get("text") or "").strip()
-    if not text:
-        return Response(status_code=204)
+async def _tts_elevenlabs(text: str) -> bytes:
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{_EL_VOICE}"
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.post(
+            url, params={"output_format": "mp3_44100_128"},
+            headers={"xi-api-key": _EL_KEY, "Content-Type": "application/json"},
+            json={"text": text, "model_id": _EL_MODEL, "language_code": "it",
+                  "voice_settings": {"stability": 0.45, "similarity_boost": 0.8,
+                                     "style": 0.1, "use_speaker_boost": True}},
+        )
+        r.raise_for_status()
+        return r.content
+
+
+async def _tts_piper(text: str) -> bytes:
     voice = await _get_piper()
 
     def _run() -> bytes:
         from piper import SynthesisConfig
-        cfg = SynthesisConfig(length_scale=1.08)  # un filo più lento = più caldo/JARVIS
+        cfg = SynthesisConfig(length_scale=1.08)
         buf = io.BytesIO()
         with wave.open(buf, "wb") as wav_file:
             voice.synthesize_wav(text, wav_file, syn_config=cfg)
         return buf.getvalue()
 
-    data = await asyncio.to_thread(_run)
-    return Response(content=data, media_type="audio/wav")
+    return await asyncio.to_thread(_run)
+
+
+@app.post("/tts")
+async def tts(payload: dict = Body(...), _auth: bool = Depends(_require_auth)) -> Response:
+    text = (payload.get("text") or "").strip()
+    if not text:
+        return Response(status_code=204)
+    if _EL_KEY:
+        try:
+            return Response(content=await _tts_elevenlabs(text), media_type="audio/mpeg")
+        except Exception as exc:  # cloud giù o limite raggiunto → ripiego locale
+            print(f"[tts] ElevenLabs fallito ({exc}); uso Piper")
+    return Response(content=await _tts_piper(text), media_type="audio/wav")
 
 
 def _ws_authorized(websocket: WebSocket) -> bool:

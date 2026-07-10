@@ -45,8 +45,8 @@
 
   /* ── scena vocale centrale ── */
   .stage{position:fixed;z-index:10;inset:54px 0 0 0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
-  .name{font-size:min(9vw,44px);font-weight:700;letter-spacing:.24em;color:#eafeff;
-    text-shadow:0 0 22px rgba(34,211,238,.8),0 0 6px rgba(34,211,238,.9);margin-top:-8vh}
+  .name{font-size:min(6vw,34px);font-weight:700;letter-spacing:.28em;color:#eafeff;
+    text-shadow:0 0 22px rgba(34,211,238,.8),0 0 6px rgba(34,211,238,.9);margin-top:20vh}
   .phase{margin-top:14px;font-size:13px;letter-spacing:.36em;text-transform:uppercase;color:var(--cyan);min-height:18px;
     text-shadow:0 0 12px rgba(34,211,238,.5);transition:.3s}
   .subs{margin-top:26px;width:min(760px,88vw);text-align:center;min-height:70px}
@@ -161,8 +161,8 @@ float snoise(vec3 v){const vec2 C=vec2(1.0/6.0,1.0/3.0);const vec4 D=vec4(0.0,0.
  return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));}`;
 const VERT=NOISE+`uniform float uTime;uniform float uIntensity;uniform float uMic;varying float vDisp;varying vec3 vN;varying vec3 vV;
 void main(){float t=uTime*0.35;float n=snoise(normal*1.7+t)*0.6+snoise(normal*3.4+t*1.4)*0.4;
- float ripple=snoise(normal*7.0+uTime*2.2)*uMic*0.26;
- float disp=n*(0.10+uIntensity*0.5)+ripple;vDisp=disp;vec3 pos=position+normal*disp;
+ float ripple=snoise(normal*7.0+uTime*2.2)*uMic*0.20;
+ float disp=n*(0.06+uIntensity*0.30)+ripple;vDisp=disp;vec3 pos=position+normal*disp;
  vec4 mv=modelViewMatrix*vec4(pos,1.0);vN=normalize(normalMatrix*normal);vV=-mv.xyz;gl_Position=projectionMatrix*mv;}`;
 const FRAG=`uniform vec3 uColorA;uniform vec3 uColorB;uniform vec3 uColorHot;uniform float uIntensity;uniform float uWarm;uniform float uTime;
 varying float vDisp;varying vec3 vN;varying vec3 vV;
@@ -171,11 +171,11 @@ void main(){vec3 N=normalize(vN);vec3 V=normalize(vV);float ndv=clamp(dot(N,V),0
  body=mix(body,uColorHot,uWarm*(0.35+0.65*fres));
  vec3 rim=mix(uColorA,uColorHot,uWarm)*fres*(0.8+uIntensity*1.6);
  float pulse=0.5+0.5*sin(uTime*3.0-vDisp*14.0);
- vec3 col=body+rim+uColorA*0.12*pulse*uIntensity;
- gl_FragColor=vec4(col,0.86+0.14*fres);}`;
+ vec3 col=body+rim*1.3+uColorA*0.12*pulse*uIntensity;
+ gl_FragColor=vec4(col,0.30+0.55*fres);}`;
 const canvas=document.getElementById('orb');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-const scene=new THREE.Scene();const camera=new THREE.PerspectiveCamera(48,1,0.1,100);camera.position.z=3.15;
+const scene=new THREE.Scene();const camera=new THREE.PerspectiveCamera(48,1,0.1,100);camera.position.z=4.6;
 const uniforms={uTime:{value:0},uIntensity:{value:0},uMic:{value:0},uWarm:{value:0},
   uColorA:{value:new THREE.Color('#22d3ee')},uColorB:{value:new THREE.Color('#0e5f7a')},uColorHot:{value:new THREE.Color('#38bdf8')}};
 const core=new THREE.Mesh(new THREE.IcosahedronGeometry(1,32),new THREE.ShaderMaterial({uniforms,vertexShader:VERT,fragmentShader:FRAG,transparent:true}));
@@ -186,7 +186,7 @@ function radialTex(){const c=document.createElement('canvas');c.width=c.height=2
  gr.addColorStop(.55,'rgba(34,211,238,.12)');gr.addColorStop(1,'rgba(34,211,238,0)');
  g.fillStyle=gr;g.fillRect(0,0,256,256);return new THREE.CanvasTexture(c);}
 const haloMat=new THREE.SpriteMaterial({map:radialTex(),color:0x22d3ee,transparent:true,opacity:.45,blending:THREE.AdditiveBlending,depthWrite:false});
-const halo=new THREE.Sprite(haloMat);halo.scale.setScalar(4.2);
+const halo=new THREE.Sprite(haloMat);halo.scale.setScalar(2.9);
 const PN=700,pPos=new Float32Array(PN*3);
 for(let i=0;i<PN;i++){const u=Math.random(),v=Math.random(),th=2*Math.PI*u,ph=Math.acos(2*v-1),r=1.5+Math.random()*0.95;
  pPos[i*3]=r*Math.sin(ph)*Math.cos(th);pPos[i*3+1]=r*Math.cos(ph);pPos[i*3+2]=r*Math.sin(ph)*Math.sin(th);}
@@ -198,8 +198,8 @@ const ringMat=new THREE.LineBasicMaterial({color:0x22d3ee,transparent:true,opaci
 const ring=new THREE.LineLoop(ringGeo,ringMat);ring.rotation.x=-0.32;
 const orbGroup=new THREE.Group();orbGroup.add(halo,points,ring,core,shell);scene.add(orbGroup);
 function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
- const s=Math.min(1,innerWidth/720)*(innerHeight<620?0.8:1);
- orbGroup.scale.setScalar(s);orbGroup.position.y=(innerHeight*0.10)/(innerHeight/2);}
+ const s=(innerHeight<620?0.6:0.82)*Math.min(1,innerWidth/560);
+ orbGroup.scale.setScalar(s);orbGroup.position.y=1.15;}
 addEventListener('resize',resize);resize();
 const ORB_PAL={
  idle:{a:'#22d3ee',b:'#0e5f7a',hot:'#38bdf8',warm:0.0},
