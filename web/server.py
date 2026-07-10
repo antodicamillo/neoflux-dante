@@ -48,6 +48,10 @@ except Exception:  # pragma: no cover
     extract_prosody = None
     _mood_phrase = None
 
+# Umore dalla voce: OFF di default (le soglie prosodiche vanno tarate sul mic reale,
+# altrimenti danno segnali errati). Riabilita con DANTE_MOOD=1 dopo la calibrazione.
+_MOOD_ON = os.environ.get("DANTE_MOOD", "0").lower() not in ("0", "", "false", "off", "no")
+
 _STATIC = Path(__file__).resolve().parent / "static"
 _WEB_USER = os.environ.get("DANTE_WEB_USER", "neoflux")
 _WEB_PASS = os.environ.get("DANTE_WEB_PASSWORD")
@@ -133,7 +137,7 @@ async def stt(audio: UploadFile = File(...), _auth: bool = Depends(_require_auth
         # Prosodia → traccia di umore, calcolata sullo STESSO wav 16k mono (costo ~10 ms).
         # Fail-open: qualsiasi errore lascia hint="" e non tocca la trascrizione.
         hint = ""
-        if extract_prosody is not None and text:
+        if _MOOD_ON and extract_prosody is not None and text:
             try:
                 feat = await asyncio.to_thread(extract_prosody, wav, text)
                 hint = _mood_phrase(feat)
@@ -151,7 +155,7 @@ async def stt(audio: UploadFile = File(...), _auth: bool = Depends(_require_auth
 # ── TTS locale (Piper) — voce italiana sul box, privata, ~0.15s a frase ──
 _PIPER_MODEL = os.environ.get(
     "DANTE_PIPER_MODEL",
-    str(Path(__file__).resolve().parent.parent / "models" / "it_IT-paola-medium.onnx"),
+    str(Path(__file__).resolve().parent.parent / "models" / "it_IT-riccardo-x_low.onnx"),
 )
 _piper = None
 _piper_lock = asyncio.Lock()
