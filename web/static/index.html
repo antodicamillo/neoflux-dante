@@ -158,11 +158,11 @@ function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=i
  const s=Math.min(1,innerWidth/720)*(innerHeight<620?0.8:1);core.scale.setScalar(s);shell.scale.setScalar(s);
  const y=(innerHeight*0.10)/(innerHeight/2);core.position.y=y;shell.position.y=y;}
 addEventListener('resize',resize);resize();
-const clock=new THREE.Clock();let orbState='idle',cur=0;
+const clock=new THREE.Clock();let orbState='idle',cur=0,micLevel=0;
 function animate(){requestAnimationFrame(animate);const t=clock.getElapsedTime();uniforms.uTime.value=t;let target;
  if(orbState==='thinking')target=0.34+0.06*Math.sin(t*6.0);
  else if(orbState==='speaking')target=0.42+0.30*Math.abs(Math.sin(t*7.0));
- else if(orbState==='listening')target=0.20+0.14*Math.sin(t*3.2);
+ else if(orbState==='listening')target=0.16+micLevel*1.1+0.05*Math.sin(t*4.0);
  else target=0.05+0.035*Math.sin(t*1.4);
  cur+=(target-cur)*0.08;uniforms.uIntensity.value=cur;const sp=0.0016+cur*0.010;
  core.rotation.y+=sp;core.rotation.x+=sp*0.45;shell.rotation.y-=sp*0.7;shell.rotation.x+=sp*0.3;renderer.render(scene,camera);}
@@ -231,8 +231,10 @@ if(SR){rec=new SR();rec.lang='it-IT';rec.interimResults=true;rec.continuous=fals
  rec.onresult=e=>{let interim='',fin='';for(const r of e.results){if(r.isFinal)fin+=r[0].transcript;else interim+=r[0].transcript;}
    if(fin)finalText=fin; subUser.textContent='» '+(fin||interim);};
  rec.onerror=ev=>{recRunning=false;
-   if(ev.error==='not-allowed'||ev.error==='service-not-allowed'){convo=false;micBtn.classList.remove('live');
-     setPhase('idle','permesso microfono negato');hint.textContent='Consenti il microfono e riprova (icona lucchetto nella barra indirizzi)';}
+   const m={'no-speech':'non ho sentito nulla — parla più vicino/forte','audio-capture':'NESSUN microfono rilevato dal browser','network':'problema di rete col servizio vocale di Google','not-allowed':'permesso microfono NEGATO','service-not-allowed':'microfono bloccato dal sistema'}[ev.error]||('errore vocale: '+ev.error);
+   hint.textContent=m; console.log('[STT error]',ev.error);
+   if(ev.error==='not-allowed'||ev.error==='service-not-allowed'||ev.error==='audio-capture'){convo=false;micBtn.classList.remove('live');
+     setPhase('idle','microfono non disponibile');}
  };
  rec.onend=()=>{recRunning=false;
    const q=finalText.trim();finalText='';
@@ -242,8 +244,27 @@ if(SR){rec=new SR();rec.lang='it-IT';rec.interimResults=true;rec.continuous=fals
 }
 function listen(){ if(!SR||recRunning)return; setPhase('listening','ti ascolto…'); micBtn.classList.add('live'); finalText='';
  try{ speechSynthesis.cancel(); rec.start(); }catch(_){ } }
-function startConvo(){ if(!SR){setPhase('idle','riconoscimento vocale non supportato');hint.textContent='Usa Chrome o Edge per la voce, oppure scrivi con ⌨';return;}
- convo=true; subDante.innerHTML=''; listen(); hint.textContent='Sto ascoltando — parla pure. Ritocca per fermare.'; }
+/* misuratore microfono reale: diagnostica (l'orb reagisce alla voce) + reattività */
+let micReady=false,analyser=null,micData=null;
+async function initMic(){
+  if(micReady)return true;
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const src=ctx.createMediaStreamSource(stream);
+    analyser=ctx.createAnalyser();analyser.fftSize=256;micData=new Uint8Array(analyser.frequencyBinCount);
+    src.connect(analyser);micReady=true;
+    (function loop(){ if(!analyser)return; analyser.getByteTimeDomainData(micData);
+      let s=0;for(let i=0;i<micData.length;i++){const v=(micData[i]-128)/128;s+=v*v;}
+      micLevel=Math.min(1,Math.sqrt(s/micData.length)*3.6); requestAnimationFrame(loop);})();
+    return true;
+  }catch(err){ console.log('[mic error]',err.name,err.message);
+    hint.textContent='Microfono non accessibile ('+err.name+'). macOS: Impostazioni › Privacy e sicurezza › Microfono › attiva il browser, poi ricarica.';
+    return false; }
+}
+async function startConvo(){ if(!SR){setPhase('idle','riconoscimento vocale non supportato');hint.textContent='Usa Chrome o Edge per la voce, oppure scrivi con ⌨';return;}
+ const ok=await initMic(); if(!ok){return;}
+ convo=true; subDante.innerHTML=''; listen(); hint.textContent='Sto ascoltando — parla pure. Se l\'orb pulsa quando parli, il mic funziona. Ritocca per fermare.'; }
 function stopConvo(){ convo=false; micBtn.classList.remove('live'); try{rec&&rec.stop();}catch(_){}
  speechSynthesis.cancel(); setPhase('idle'); hint.textContent='Parla naturalmente · DANTE ti ascolta e risponde a voce'; }
 micBtn.onclick=()=>{ if(phase==='speaking'){ speechSynthesis.cancel(); if(convo)listen(); return; } convo?stopConvo():startConvo(); };
