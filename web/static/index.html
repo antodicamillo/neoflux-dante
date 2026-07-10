@@ -5,337 +5,258 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>DANTE · Neoflux</title>
 <style>
-  @font-face{
-    font-family:'Share Tech Mono'; font-style:normal; font-weight:400; font-display:swap;
-    src:url('/static/vendor/sharetechmono.woff2') format('woff2');
-  }
-  :root{
-    --cyan:#22d3ee; --cyan2:#06b6d4; --cyan-deep:#164e63; --cyan-txt:#cffafe;
-    --bg:#000; --glass:rgba(0,0,0,.42); --glass2:rgba(0,0,0,.3); --line:rgba(255,255,255,.10);
-    --dim:#0891b2; --err:#ef4444; --ok:#22c55e;
-  }
+  @font-face{font-family:'Share Tech Mono';font-style:normal;font-weight:400;font-display:swap;
+    src:url('/static/vendor/sharetechmono.woff2') format('woff2');}
+  :root{--cyan:#22d3ee;--cyan2:#06b6d4;--cyan-deep:#164e63;--cyan-txt:#cffafe;--dim:#0891b2;--err:#ef4444;--ok:#22c55e}
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;overflow:hidden}
-  body{
-    background:#000; color:var(--cyan-txt);
-    font-family:'Share Tech Mono',ui-monospace,monospace; letter-spacing:.02em;
-  }
-  /* ── strati di sfondo ─────────────────────────────── */
+  body{background:#000;color:var(--cyan-txt);font-family:'Share Tech Mono',ui-monospace,monospace;letter-spacing:.02em}
   .bg{position:fixed;inset:0;z-index:0;pointer-events:none}
   .bg.grad{background:radial-gradient(ellipse at center,#111827 0%,#000 60%,#000 100%);opacity:.6}
   .bg.glow{display:grid;place-items:center}
-  .bg.glow::after{content:"";width:820px;height:820px;max-width:120vw;border-radius:50%;
-    background:rgba(22,78,99,.16);filter:blur(120px)}
-  .bg.grain{opacity:.05;mix-blend-mode:overlay;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  .bg.glow::after{content:"";width:820px;height:820px;max-width:120vw;border-radius:50%;background:rgba(22,78,99,.16);filter:blur(120px)}
+  .bg.grain{opacity:.05;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
   #orb{position:fixed;inset:0;z-index:1}
 
-  /* ── top bar ──────────────────────────────────────── */
-  header{position:fixed;top:0;left:0;right:0;z-index:20;height:56px;display:flex;align-items:center;
-    gap:16px;padding:0 22px;background:rgba(0,0,0,.4);backdrop-filter:blur(14px);
-    border-bottom:1px solid rgba(34,211,238,.18)}
-  header .brand{font-size:19px;font-weight:700;letter-spacing:.34em;
-    text-shadow:0 0 12px rgba(34,211,238,.6);color:#e6feff}
-  header .tag{font-size:10px;letter-spacing:.2em;color:var(--dim);border:1px solid var(--cyan-deep);
-    padding:2px 7px;border-radius:5px}
+  header{position:fixed;top:0;left:0;right:0;z-index:20;height:54px;display:flex;align-items:center;gap:14px;
+    padding:0 20px;background:rgba(0,0,0,.35);backdrop-filter:blur(14px);border-bottom:1px solid rgba(34,211,238,.16)}
+  header .brand{font-size:18px;font-weight:700;letter-spacing:.34em;text-shadow:0 0 12px rgba(34,211,238,.6);color:#e6feff}
+  header .tag{font-size:10px;letter-spacing:.2em;color:var(--dim);border:1px solid var(--cyan-deep);padding:2px 7px;border-radius:5px}
   header .spacer{flex:1}
-  header .stat{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.15em;color:var(--dim);text-transform:uppercase}
+  .stat{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.15em;color:var(--dim);text-transform:uppercase}
   .dot{width:8px;height:8px;border-radius:50%;background:#334;transition:.3s}
   .dot.on{background:var(--ok);box-shadow:0 0 10px var(--ok)}
   .dot.busy{background:var(--cyan);box-shadow:0 0 10px var(--cyan);animation:pulse 1s infinite}
   .dot.err{background:var(--err);box-shadow:0 0 10px var(--err)}
   @keyframes pulse{50%{opacity:.3}}
-  header .clock{font-size:12px;letter-spacing:.12em;color:var(--cyan-txt);opacity:.8}
+  .clock{font-size:12px;letter-spacing:.12em;opacity:.8}
 
-  /* ── etichetta orb centrale ───────────────────────── */
-  #orbLabel{position:fixed;z-index:10;left:0;right:0;top:calc(56px + (46vh - 56px)/2);
-    text-align:center;pointer-events:none;transform:translateY(-50%)}
-  #orbLabel .name{font-size:min(11vw,58px);font-weight:700;letter-spacing:.22em;color:#eafeff;
-    text-shadow:0 0 22px rgba(34,211,238,.8),0 0 6px rgba(34,211,238,.9)}
-  #orbLabel .role{margin-top:6px;font-size:11px;letter-spacing:.42em;color:var(--dim);text-transform:uppercase}
-
-  /* ── pannello chat ────────────────────────────────── */
-  main{position:fixed;z-index:15;left:50%;bottom:20px;transform:translateX(-50%);
-    width:min(760px,94vw);max-height:52vh;display:flex;flex-direction:column;
-    background:var(--glass);backdrop-filter:blur(22px);border:1px solid var(--line);
-    border-radius:18px;box-shadow:0 25px 60px -12px rgba(0,0,0,.6),0 0 30px rgba(34,211,238,.05)}
-  #log{overflow-y:auto;padding:16px 18px 6px;display:flex;flex-direction:column;gap:12px;
-    mask-image:linear-gradient(to bottom,transparent,#000 8%,#000 100%);scrollbar-width:none}
-  #log::-webkit-scrollbar{display:none}
-  .msg{display:flex;gap:10px;animation:fin .25s ease}
-  @keyframes fin{from{opacity:0;transform:translateY(6px)}}
-  .msg .av{width:26px;height:26px;border-radius:7px;flex:none;display:grid;place-items:center;
-    font-size:10px;font-weight:700;letter-spacing:.05em}
-  .msg.dante .av{background:linear-gradient(135deg,var(--cyan),var(--cyan2));color:#04121a;
-    box-shadow:0 0 12px rgba(34,211,238,.4)}
-  .msg.user{flex-direction:row-reverse}
-  .msg.user .av{background:rgba(6,182,212,.12);border:1px solid var(--cyan-deep);color:var(--cyan)}
-  .bubble{font-size:14px;line-height:1.55;color:#d1d5db;min-width:0;max-width:82%}
-  .msg.user .bubble{color:var(--cyan-txt);text-align:right}
-  .bubble p{margin:.3em 0}
-  .bubble strong{color:var(--cyan-txt);font-weight:700}
-  .bubble h4{color:var(--cyan);font-size:13px;letter-spacing:.08em;margin:.5em 0 .25em;text-transform:uppercase}
-  .bubble ul{margin:.3em 0;padding-left:18px}
-  .bubble code{background:rgba(6,182,212,.1);border:1px solid var(--cyan-deep);border-radius:4px;padding:0 5px;font-size:12.5px;color:var(--cyan-txt)}
-  .bubble table{border-collapse:collapse;margin:.5em 0;font-size:12.5px;display:block;overflow-x:auto}
-  .bubble th,.bubble td{border:1px solid rgba(34,211,238,.2);padding:5px 9px;text-align:left;white-space:nowrap}
-  .bubble th{background:rgba(6,182,212,.1);color:var(--cyan);text-transform:uppercase;letter-spacing:.05em}
-  .tools{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
-  .chip{font-size:10px;letter-spacing:.08em;color:var(--cyan);background:rgba(6,182,212,.1);
-    border:1px solid rgba(34,211,238,.28);border-radius:20px;padding:3px 10px;display:inline-flex;gap:6px;align-items:center;text-transform:uppercase}
+  /* ── scena vocale centrale ── */
+  .stage{position:fixed;z-index:10;inset:54px 0 0 0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+  .name{font-size:min(9vw,44px);font-weight:700;letter-spacing:.24em;color:#eafeff;
+    text-shadow:0 0 22px rgba(34,211,238,.8),0 0 6px rgba(34,211,238,.9);margin-top:-8vh}
+  .phase{margin-top:14px;font-size:13px;letter-spacing:.36em;text-transform:uppercase;color:var(--cyan);min-height:18px;
+    text-shadow:0 0 12px rgba(34,211,238,.5);transition:.3s}
+  .subs{margin-top:26px;width:min(760px,88vw);text-align:center;min-height:70px}
+  .sub-user{font-size:16px;color:var(--dim);letter-spacing:.02em;min-height:22px;transition:.2s}
+  .sub-dante{font-size:19px;line-height:1.5;color:var(--cyan-txt);margin-top:10px;
+    text-shadow:0 0 14px rgba(34,211,238,.25);max-height:34vh;overflow-y:auto;scrollbar-width:none}
+  .sub-dante::-webkit-scrollbar{display:none}
+  .chips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+  .chip{font-size:10px;letter-spacing:.08em;color:var(--cyan);background:rgba(6,182,212,.1);border:1px solid rgba(34,211,238,.28);
+    border-radius:20px;padding:3px 10px;text-transform:uppercase;display:inline-flex;gap:6px;align-items:center}
   .chip::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--cyan);box-shadow:0 0 6px var(--cyan)}
-  .typing i{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--dim);margin-right:4px;animation:blink 1.2s infinite}
-  .typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
-  @keyframes blink{0%,80%{opacity:.25}40%{opacity:1}}
-  .err{color:var(--err)}
 
-  /* ── input row ────────────────────────────────────── */
-  .inrow{display:flex;gap:10px;align-items:flex-end;padding:12px 14px;border-top:1px solid var(--line)}
-  textarea{flex:1;resize:none;background:rgba(6,182,212,.06);color:var(--cyan-txt);
-    border:1px solid var(--cyan-deep);border-radius:12px;padding:11px 14px;font:14px 'Share Tech Mono',monospace;
-    letter-spacing:.03em;max-height:120px;outline:none}
-  textarea::placeholder{color:rgba(8,145,178,.6);letter-spacing:.15em;text-transform:uppercase;font-size:12px}
-  textarea:focus{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(34,211,238,.4)}
-  .btn{flex:none;width:44px;height:44px;border-radius:12px;border:1px solid var(--cyan-deep);
-    background:rgba(6,182,212,.08);color:var(--cyan);cursor:pointer;display:grid;place-items:center;
-    transition:.25s;font-size:18px}
-  .btn:hover{background:rgba(6,182,212,.2)}
-  .btn.send{background:linear-gradient(135deg,var(--cyan),var(--cyan2));color:#04121a;border:0;font-weight:700}
-  .btn.on{border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 14px rgba(34,211,238,.4);background:rgba(6,182,212,.18)}
-  .btn.rec{border-color:var(--err);color:var(--err);box-shadow:0 0 14px rgba(239,68,68,.4);animation:pulse .9s infinite}
-  .btn:disabled{opacity:.4;cursor:default}
+  /* ── controlli in basso ── */
+  .dock{position:fixed;z-index:15;left:50%;bottom:34px;transform:translateX(-50%);display:flex;gap:16px;align-items:center}
+  .mic{width:78px;height:78px;border-radius:50%;border:2px solid var(--cyan-deep);background:rgba(6,182,212,.08);
+    color:var(--cyan);cursor:pointer;display:grid;place-items:center;font-size:30px;transition:.25s;position:relative}
+  .mic:hover{background:rgba(6,182,212,.18)}
+  .mic.live{border-color:var(--cyan);color:#eafeff;box-shadow:0 0 30px rgba(34,211,238,.6);background:rgba(6,182,212,.25)}
+  .mic.live::after{content:"";position:absolute;inset:-8px;border-radius:50%;border:2px solid rgba(34,211,238,.5);animation:ring 1.4s infinite}
+  @keyframes ring{0%{transform:scale(1);opacity:.7}100%{transform:scale(1.35);opacity:0}}
+  .mini{width:46px;height:46px;border-radius:50%;border:1px solid var(--cyan-deep);background:rgba(6,182,212,.06);
+    color:var(--cyan);cursor:pointer;display:grid;place-items:center;font-size:18px;transition:.25s}
+  .mini:hover{background:rgba(6,182,212,.18)}
+  .mini.on{border-color:var(--cyan);box-shadow:0 0 14px rgba(34,211,238,.4);color:#eafeff}
+  .hint{position:fixed;z-index:15;left:0;right:0;bottom:8px;text-align:center;font-size:11px;letter-spacing:.14em;color:rgba(8,145,178,.7);text-transform:uppercase}
+
+  /* ── input testo (fallback, nascosto) ── */
+  .textbar{position:fixed;z-index:16;left:50%;bottom:130px;transform:translateX(-50%);width:min(640px,90vw);display:none;gap:10px}
+  .textbar.show{display:flex}
+  .textbar input{flex:1;background:rgba(6,182,212,.06);color:var(--cyan-txt);border:1px solid var(--cyan-deep);border-radius:12px;
+    padding:11px 14px;font:14px 'Share Tech Mono',monospace;letter-spacing:.03em;outline:none}
+  .textbar input:focus{border-color:var(--cyan)}
+  .textbar input::placeholder{color:rgba(8,145,178,.6);text-transform:uppercase;letter-spacing:.12em;font-size:12px}
+
+  /* ── trascrizione (pannello, nascosto) ── */
+  .script{position:fixed;z-index:30;top:54px;right:0;bottom:0;width:min(420px,92vw);background:rgba(0,0,0,.72);
+    backdrop-filter:blur(20px);border-left:1px solid rgba(34,211,238,.2);padding:18px;overflow-y:auto;
+    transform:translateX(100%);transition:.3s}
+  .script.show{transform:translateX(0)}
+  .script h3{font-size:12px;letter-spacing:.24em;color:var(--cyan);text-transform:uppercase;margin-bottom:14px}
+  .line{margin-bottom:12px;font-size:13px;line-height:1.5}
+  .line .who{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--dim)}
+  .line.u .txt{color:#d1d5db}.line.d .txt{color:var(--cyan-txt)}
+  .line .txt strong{color:var(--cyan-txt)} .line .txt h4{color:var(--cyan);font-size:12px;margin:.3em 0}
+  .line table{border-collapse:collapse;font-size:11px;margin:.3em 0;display:block;overflow-x:auto}
+  .line td,.line th{border:1px solid rgba(34,211,238,.2);padding:3px 6px;white-space:nowrap}
 </style>
 </head>
 <body>
-  <div class="bg grad"></div>
-  <div class="bg glow"></div>
-  <div class="bg grain"></div>
+  <div class="bg grad"></div><div class="bg glow"></div><div class="bg grain"></div>
   <canvas id="orb"></canvas>
 
   <header>
-    <span class="brand">DANTE</span>
-    <span class="tag">NEOFLUX · V1</span>
+    <span class="brand">DANTE</span><span class="tag">NEOFLUX · V1</span>
     <span class="spacer"></span>
-    <span class="stat"><span class="dot" id="dot"></span><span id="statusTxt">connessione…</span></span>
+    <span class="stat"><span class="dot" id="dot"></span><span id="conn">connessione…</span></span>
     <span class="clock" id="clock">--:--</span>
   </header>
 
-  <div id="orbLabel">
+  <div class="stage">
     <div class="name">DANTE</div>
-    <div class="role">Neoflux ops · osservatore</div>
+    <div class="phase" id="phase">tocca il microfono per parlare</div>
+    <div class="subs">
+      <div class="sub-user" id="subUser"></div>
+      <div class="chips" id="chips"></div>
+      <div class="sub-dante" id="subDante"></div>
+    </div>
   </div>
 
-  <main>
-    <div id="log">
-      <div class="msg dante"><div class="av">D</div><div class="bubble">
-        Sistemi online. Sono <strong>DANTE</strong>, osservo l'infrastruttura Neoflux in sola lettura.
-        Chiedimi: <em>"Come sta la piattaforma?"</em>, <em>"Quale VPS consuma più RAM?"</em>
-      </div></div>
-    </div>
-    <div class="inrow">
-      <textarea id="in" rows="1" placeholder="Initialize command…"></textarea>
-      <button class="btn" id="mic" title="Voce (parla)">🎙</button>
-      <button class="btn" id="spk" title="Risposta vocale on/off">🔊</button>
-      <button class="btn send" id="send" title="Invia">➤</button>
-    </div>
-  </main>
+  <div class="textbar" id="textbar">
+    <input id="txt" placeholder="Scrivi a DANTE…">
+  </div>
+
+  <div class="dock">
+    <button class="mini" id="kb" title="Scrivi invece di parlare">⌨</button>
+    <button class="mic" id="mic" title="Parla con DANTE">🎙</button>
+    <button class="mini on" id="spk" title="Voce di DANTE on/off">🔊</button>
+    <button class="mini" id="scriptBtn" title="Trascrizione">☰</button>
+  </div>
+  <div class="hint" id="hint">Parla naturalmente · DANTE ti ascolta e risponde a voce</div>
+
+  <div class="script" id="script"><h3>Trascrizione</h3><div id="lines"></div></div>
 
 <script src="/static/vendor/three.min.js"></script>
 <script>
-/* ══════════ ORB 3D (Three.js, shader di distorsione) ══════════ */
-const NOISE = `
+/* ══════════ ORB 3D ══════════ */
+const NOISE=`
 vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
 vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}
 vec4 permute(vec4 x){return mod289(((x*34.0)+1.0)*x);}
 vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}
-float snoise(vec3 v){
-  const vec2 C=vec2(1.0/6.0,1.0/3.0); const vec4 D=vec4(0.0,0.5,1.0,2.0);
-  vec3 i=floor(v+dot(v,C.yyy)); vec3 x0=v-i+dot(i,C.xxx);
-  vec3 g=step(x0.yzx,x0.xyz); vec3 l=1.0-g; vec3 i1=min(g.xyz,l.zxy); vec3 i2=max(g.xyz,l.zxy);
-  vec3 x1=x0-i1+C.xxx; vec3 x2=x0-i2+C.yyy; vec3 x3=x0-D.yyy; i=mod289(i);
-  vec4 p=permute(permute(permute(i.z+vec4(0.0,i1.z,i2.z,1.0))+i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));
-  float n_=0.142857142857; vec3 ns=n_*D.wyz-D.xzx;
-  vec4 j=p-49.0*floor(p*ns.z*ns.z); vec4 x_=floor(j*ns.z); vec4 y_=floor(j-7.0*x_);
-  vec4 x=x_*ns.x+ns.yyyy; vec4 y=y_*ns.x+ns.yyyy; vec4 h=1.0-abs(x)-abs(y);
-  vec4 b0=vec4(x.xy,y.xy); vec4 b1=vec4(x.zw,y.zw);
-  vec4 s0=floor(b0)*2.0+1.0; vec4 s1=floor(b1)*2.0+1.0; vec4 sh=-step(h,vec4(0.0));
-  vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy; vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
-  vec3 p0=vec3(a0.xy,h.x); vec3 p1=vec3(a0.zw,h.y); vec3 p2=vec3(a1.xy,h.z); vec3 p3=vec3(a1.zw,h.w);
-  vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));
-  p0*=norm.x; p1*=norm.y; p2*=norm.z; p3*=norm.w;
-  vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0); m=m*m;
-  return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
-}`;
-const VERT = NOISE + `
-uniform float uTime; uniform float uIntensity;
-varying float vDisp; varying vec3 vN; varying vec3 vV;
-void main(){
-  float t=uTime*0.35;
-  float n=snoise(normal*1.7+t)*0.6 + snoise(normal*3.4+t*1.4)*0.4;
-  float disp=n*(0.10+uIntensity*0.5);
-  vDisp=disp;
-  vec3 pos=position+normal*disp;
-  vec4 mv=modelViewMatrix*vec4(pos,1.0);
-  vN=normalize(normalMatrix*normal); vV=-mv.xyz;
-  gl_Position=projectionMatrix*mv;
-}`;
-const FRAG = `
-uniform vec3 uColorA; uniform vec3 uColorB; uniform float uIntensity;
-varying float vDisp; varying vec3 vN; varying vec3 vV;
-void main(){
-  vec3 N=normalize(vN); vec3 V=normalize(vV);
-  float fres=pow(1.0-clamp(dot(N,V),0.0,1.0),2.4);
-  vec3 col=mix(uColorB,uColorA,clamp(vDisp*3.0+0.35,0.0,1.0));
-  col+=uColorA*fres*(0.7+uIntensity*1.4);
-  gl_FragColor=vec4(col,0.9);
-}`;
-
+float snoise(vec3 v){const vec2 C=vec2(1.0/6.0,1.0/3.0);const vec4 D=vec4(0.0,0.5,1.0,2.0);
+ vec3 i=floor(v+dot(v,C.yyy));vec3 x0=v-i+dot(i,C.xxx);
+ vec3 g=step(x0.yzx,x0.xyz);vec3 l=1.0-g;vec3 i1=min(g.xyz,l.zxy);vec3 i2=max(g.xyz,l.zxy);
+ vec3 x1=x0-i1+C.xxx;vec3 x2=x0-i2+C.yyy;vec3 x3=x0-D.yyy;i=mod289(i);
+ vec4 p=permute(permute(permute(i.z+vec4(0.0,i1.z,i2.z,1.0))+i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));
+ float n_=0.142857142857;vec3 ns=n_*D.wyz-D.xzx;
+ vec4 j=p-49.0*floor(p*ns.z*ns.z);vec4 x_=floor(j*ns.z);vec4 y_=floor(j-7.0*x_);
+ vec4 x=x_*ns.x+ns.yyyy;vec4 y=y_*ns.x+ns.yyyy;vec4 h=1.0-abs(x)-abs(y);
+ vec4 b0=vec4(x.xy,y.xy);vec4 b1=vec4(x.zw,y.zw);vec4 s0=floor(b0)*2.0+1.0;vec4 s1=floor(b1)*2.0+1.0;vec4 sh=-step(h,vec4(0.0));
+ vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy;vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
+ vec3 p0=vec3(a0.xy,h.x);vec3 p1=vec3(a0.zw,h.y);vec3 p2=vec3(a1.xy,h.z);vec3 p3=vec3(a1.zw,h.w);
+ vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));p0*=norm.x;p1*=norm.y;p2*=norm.z;p3*=norm.w;
+ vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0);m=m*m;
+ return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));}`;
+const VERT=NOISE+`uniform float uTime;uniform float uIntensity;varying float vDisp;varying vec3 vN;varying vec3 vV;
+void main(){float t=uTime*0.35;float n=snoise(normal*1.7+t)*0.6+snoise(normal*3.4+t*1.4)*0.4;
+ float disp=n*(0.10+uIntensity*0.5);vDisp=disp;vec3 pos=position+normal*disp;
+ vec4 mv=modelViewMatrix*vec4(pos,1.0);vN=normalize(normalMatrix*normal);vV=-mv.xyz;gl_Position=projectionMatrix*mv;}`;
+const FRAG=`uniform vec3 uColorA;uniform vec3 uColorB;uniform float uIntensity;varying float vDisp;varying vec3 vN;varying vec3 vV;
+void main(){vec3 N=normalize(vN);vec3 V=normalize(vV);float fres=pow(1.0-clamp(dot(N,V),0.0,1.0),2.4);
+ vec3 col=mix(uColorB,uColorA,clamp(vDisp*3.0+0.35,0.0,1.0));col+=uColorA*fres*(0.7+uIntensity*1.4);gl_FragColor=vec4(col,0.9);}`;
 const canvas=document.getElementById('orb');
-const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-const scene=new THREE.Scene();
-const camera=new THREE.PerspectiveCamera(48,1,0.1,100); camera.position.z=3.15;
-const uniforms={uTime:{value:0},uIntensity:{value:0},
-  uColorA:{value:new THREE.Color('#22d3ee')},uColorB:{value:new THREE.Color('#0e5f7a')}};
-const core=new THREE.Mesh(new THREE.IcosahedronGeometry(1,32),
-  new THREE.ShaderMaterial({uniforms,vertexShader:VERT,fragmentShader:FRAG,transparent:true}));
-const shell=new THREE.Mesh(new THREE.IcosahedronGeometry(1.28,5),
-  new THREE.MeshBasicMaterial({color:0x22d3ee,wireframe:true,transparent:true,opacity:.10,blending:THREE.AdditiveBlending}));
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene();const camera=new THREE.PerspectiveCamera(48,1,0.1,100);camera.position.z=3.15;
+const uniforms={uTime:{value:0},uIntensity:{value:0},uColorA:{value:new THREE.Color('#22d3ee')},uColorB:{value:new THREE.Color('#0e5f7a')}};
+const core=new THREE.Mesh(new THREE.IcosahedronGeometry(1,32),new THREE.ShaderMaterial({uniforms,vertexShader:VERT,fragmentShader:FRAG,transparent:true}));
+const shell=new THREE.Mesh(new THREE.IcosahedronGeometry(1.28,5),new THREE.MeshBasicMaterial({color:0x22d3ee,wireframe:true,transparent:true,opacity:.10,blending:THREE.AdditiveBlending}));
 scene.add(core,shell);
-
-function resize(){
-  const s=Math.min(innerWidth,innerHeight*1.1);
-  renderer.setSize(innerWidth,innerHeight,false);
-  camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
-  const scale=Math.min(1, innerWidth/720)* (innerHeight<620?0.8:1);
-  core.scale.setScalar(scale); shell.scale.setScalar(scale);
-  // sposta l'orb verso l'alto (dietro l'etichetta), lasciando spazio alla chat
-  const y = (innerHeight*0.16)/ (innerHeight/2);
-  core.position.y=y; shell.position.y=y;
-}
-addEventListener('resize',resize); resize();
-
-const clock=new THREE.Clock();
-let state='idle', cur=0, mic=0;
-function animate(){
-  requestAnimationFrame(animate);
-  const t=clock.getElapsedTime(); uniforms.uTime.value=t;
-  let target;
-  if(state==='thinking') target=0.34+0.06*Math.sin(t*6.0);
-  else if(state==='speaking') target=0.42+0.30*Math.abs(Math.sin(t*7.0));
-  else if(state==='listening') target=0.16+0.10*Math.sin(t*3.0)+mic*0.5;
-  else target=0.05+0.035*Math.sin(t*1.4);           // idle: respiro
-  cur+=(target-cur)*0.08; uniforms.uIntensity.value=cur;
-  const spin=0.0016+cur*0.010;
-  core.rotation.y+=spin; core.rotation.x+=spin*0.45;
-  shell.rotation.y-=spin*0.7; shell.rotation.x+=spin*0.3;
-  renderer.render(scene,camera);
-}
+function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+ const s=Math.min(1,innerWidth/720)*(innerHeight<620?0.8:1);core.scale.setScalar(s);shell.scale.setScalar(s);
+ const y=(innerHeight*0.10)/(innerHeight/2);core.position.y=y;shell.position.y=y;}
+addEventListener('resize',resize);resize();
+const clock=new THREE.Clock();let orbState='idle',cur=0;
+function animate(){requestAnimationFrame(animate);const t=clock.getElapsedTime();uniforms.uTime.value=t;let target;
+ if(orbState==='thinking')target=0.34+0.06*Math.sin(t*6.0);
+ else if(orbState==='speaking')target=0.42+0.30*Math.abs(Math.sin(t*7.0));
+ else if(orbState==='listening')target=0.20+0.14*Math.sin(t*3.2);
+ else target=0.05+0.035*Math.sin(t*1.4);
+ cur+=(target-cur)*0.08;uniforms.uIntensity.value=cur;const sp=0.0016+cur*0.010;
+ core.rotation.y+=sp;core.rotation.x+=sp*0.45;shell.rotation.y-=sp*0.7;shell.rotation.x+=sp*0.3;renderer.render(scene,camera);}
 animate();
 
-/* ══════════ CHAT + WebSocket ══════════ */
-const logEl=document.getElementById('log'), input=document.getElementById('in'),
-      sendBtn=document.getElementById('send'), dot=document.getElementById('dot'),
-      statusTxt=document.getElementById('statusTxt'), micBtn=document.getElementById('mic'), spkBtn=document.getElementById('spk');
-let ws, busy=false, curMsg=null, speakOn=true;
-
+/* ══════════ elementi ══════════ */
+const dot=document.getElementById('dot'),conn=document.getElementById('conn'),phaseEl=document.getElementById('phase'),
+      subUser=document.getElementById('subUser'),subDante=document.getElementById('subDante'),chips=document.getElementById('chips'),
+      micBtn=document.getElementById('mic'),spkBtn=document.getElementById('spk'),kbBtn=document.getElementById('kb'),
+      scriptBtn=document.getElementById('scriptBtn'),scriptEl=document.getElementById('script'),lines=document.getElementById('lines'),
+      textbar=document.getElementById('textbar'),txt=document.getElementById('txt'),hint=document.getElementById('hint');
 function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
-function md(src){
-  const L=esc(src).split('\n'); let h='',i=0;
-  const inl=t=>t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>');
-  while(i<L.length){let l=L[i];
-    if(/^#{1,6}\s/.test(l)){h+='<h4>'+inl(l.replace(/^#+\s/,''))+'</h4>';i++;continue;}
-    if(l.includes('|')&&i+1<L.length&&/^\s*\|?[\s:|-]+\|?\s*$/.test(L[i+1])&&L[i+1].includes('-')){
-      const row=s=>s.replace(/^\s*\|/,'').replace(/\|\s*$/,'').split('|').map(c=>c.trim());
-      const hd=row(l);i+=2;let bd='';
-      while(i<L.length&&L[i].includes('|')){bd+='<tr>'+row(L[i]).map(c=>'<td>'+inl(c)+'</td>').join('')+'</tr>';i++;}
-      h+='<table><thead><tr>'+hd.map(c=>'<th>'+inl(c)+'</th>').join('')+'</tr></thead><tbody>'+bd+'</tbody></table>';continue;}
-    if(/^\s*[-*]\s/.test(l)){let it='';while(i<L.length&&/^\s*[-*]\s/.test(L[i])){it+='<li>'+inl(L[i].replace(/^\s*[-*]\s/,''))+'</li>';i++;}h+='<ul>'+it+'</ul>';continue;}
-    if(l.trim()==''){i++;continue;} h+='<p>'+inl(l)+'</p>';i++;}
-  return h;
-}
-function addMsg(who){
-  const m=document.createElement('div');m.className='msg '+who;
-  m.innerHTML='<div class="av">'+(who==='user'?'TU':'D')+'</div><div class="bubble"></div>';
-  logEl.appendChild(m); logEl.scrollTop=logEl.scrollHeight; return m.querySelector('.bubble');
-}
-function startDante(){
-  const b=addMsg('dante');
-  b.innerHTML='<div class="tools"></div><div class="content"><span class="typing"><i></i><i></i><i></i></span></div>';
-  curMsg={tools:b.querySelector('.tools'),content:b.querySelector('.content'),raw:'',started:false};
-}
-function setStatus(s,cls){statusTxt.textContent=s;dot.className='dot '+(cls||'');}
+function md(src){const L=esc(src).split('\n');let h='',i=0;const inl=t=>t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>');
+ while(i<L.length){let l=L[i];
+  if(/^#{1,6}\s/.test(l)){h+='<h4>'+inl(l.replace(/^#+\s/,''))+'</h4>';i++;continue;}
+  if(l.includes('|')&&i+1<L.length&&/^\s*\|?[\s:|-]+\|?\s*$/.test(L[i+1])&&L[i+1].includes('-')){const row=s=>s.replace(/^\s*\|/,'').replace(/\|\s*$/,'').split('|').map(c=>c.trim());
+   const hd=row(l);i+=2;let bd='';while(i<L.length&&L[i].includes('|')){bd+='<tr>'+row(L[i]).map(c=>'<td>'+inl(c)+'</td>').join('')+'</tr>';i++;}
+   h+='<table><thead><tr>'+hd.map(c=>'<th>'+inl(c)+'</th>').join('')+'</tr></thead><tbody>'+bd+'</tbody></table>';continue;}
+  if(/^\s*[-*]\s/.test(l)){let it='';while(i<L.length&&/^\s*[-*]\s/.test(L[i])){it+='<li>'+inl(L[i].replace(/^\s*[-*]\s/,''))+'</li>';i++;}h+='<ul>'+it+'</ul>';continue;}
+  if(l.trim()==''){i++;continue;}h+='<p>'+inl(l)+'</p>';i++;}return h;}
+function addLine(who,html){const d=document.createElement('div');d.className='line '+(who==='user'?'u':'d');
+ d.innerHTML='<div class="who">'+(who==='user'?'TU':'DANTE')+'</div><div class="txt">'+html+'</div>';lines.appendChild(d);scriptEl.scrollTop=scriptEl.scrollHeight;}
 
-function connect(){
-  const proto=location.protocol==='https:'?'wss':'ws';
-  ws=new WebSocket(proto+'://'+location.host+'/ws');
-  ws.onopen=()=>{setStatus('pronto','on');state='idle';};
-  ws.onclose=()=>{setStatus('disconnesso — riconnessione','err');busy=false;sendBtn.disabled=false;state='idle';setTimeout(connect,2000);};
-  ws.onmessage=e=>{
-    const d=JSON.parse(e.data);
-    if(d.type==='ready'){setStatus('pronto','on');}
-    else if(d.type==='tool'){ if(!curMsg)return; state='thinking';
-      const c=document.createElement('span');c.className='chip';
-      c.textContent=d.name.replace('mcp__neoflux-','').replace(/__/g,' ').replace('ToolSearch','ricerca');
-      curMsg.tools.appendChild(c);}
-    else if(d.type==='text'){ if(!curMsg)return;
-      if(!curMsg.started){curMsg.content.innerHTML='';curMsg.started=true;}
-      curMsg.raw+=d.text; curMsg.content.innerHTML=md(curMsg.raw); logEl.scrollTop=logEl.scrollHeight;}
-    else if(d.type==='error'){ if(curMsg)curMsg.content.innerHTML='<span class="err">Errore: '+esc(d.text)+'</span>'; endTurn();}
-    else if(d.type==='done'){
-      if(curMsg&&!curMsg.started)curMsg.content.innerHTML='<span class="err">(nessuna risposta)</span>';
-      const said=curMsg?curMsg.raw:''; endTurn();
-      if(speakOn&&said) speak(said); else state='idle';
-    }
-    logEl.scrollTop=logEl.scrollHeight;
-  };
+/* ══════════ voce out (TTS) ══════════ */
+let speakOn=true,itVoice=null;
+function pickVoice(){const v=speechSynthesis.getVoices();itVoice=v.find(x=>/it(-|_)?IT/i.test(x.lang))||v.find(x=>x.lang&&x.lang.startsWith('it'))||null;}
+if('speechSynthesis'in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice;}
+function stripMd(t){return t.replace(/[#*`|>_]/g,'').replace(/\-{2,}/g,'').replace(/\s+/g,' ').trim();}
+function speak(text,after){
+  if(!speakOn||!('speechSynthesis'in window)||!text.trim()){if(after)after();return;}
+  const u=new SpeechSynthesisUtterance(stripMd(text).slice(0,700));u.lang='it-IT';if(itVoice)u.voice=itVoice;u.rate=1.06;
+  setPhase('speaking','DANTE parla');
+  u.onend=()=>{if(after)after();};u.onerror=()=>{if(after)after();};
+  speechSynthesis.cancel();speechSynthesis.speak(u);
 }
-function endTurn(){busy=false;sendBtn.disabled=false;curMsg=null;setStatus('pronto','on');}
 
-function send(){
-  const t=input.value.trim(); if(!t||busy||!ws||ws.readyState!==1)return;
-  addMsg('user').textContent=t; input.value='';input.style.height='auto';
-  busy=true;sendBtn.disabled=true;setStatus('elaboro…','busy');state='thinking';startDante();
-  ws.send(JSON.stringify({message:t}));
+/* ══════════ conversazione ══════════ */
+let ws,convo=false,phase='idle',finalText='',curMsg=null;
+function setPhase(p,label){phase=p;orbState=(p==='listening'||p==='thinking'||p==='speaking')?p:'idle';
+ phaseEl.textContent=label||({idle:'tocca il microfono per parlare',listening:'ti ascolto…',thinking:'sto controllando…',speaking:'DANTE parla'}[p]);}
+function setConn(s,cls){conn.textContent=s;dot.className='dot '+(cls||'')}
+
+function connect(){const proto=location.protocol==='https:'?'wss':'ws';ws=new WebSocket(proto+'://'+location.host+'/ws');
+ ws.onopen=()=>setConn('online','on');
+ ws.onclose=()=>{setConn('riconnessione','err');setTimeout(connect,2000)};
+ ws.onmessage=e=>{const d=JSON.parse(e.data);
+  if(d.type==='ready'){setConn('online','on');}
+  else if(d.type==='tool'){if(!curMsg)return;setPhase('thinking','sto controllando i server…');
+    const c=document.createElement('span');c.className='chip';
+    c.textContent=d.name.replace('mcp__neoflux-','').replace(/__/g,' ').replace('ToolSearch','ricerca');chips.appendChild(c);}
+  else if(d.type==='text'){if(!curMsg)return;curMsg.raw+=d.text;subDante.innerHTML=md(curMsg.raw);}
+  else if(d.type==='error'){subDante.innerHTML='<span style="color:var(--err)">Errore: '+esc(d.text)+'</span>';finishTurn('');}
+  else if(d.type==='done'){const said=curMsg?curMsg.raw:'';if(said)addLine('dante',md(said));finishTurn(said);}};
 }
-sendBtn.onclick=send;
-input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
-input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(input.scrollHeight,120)+'px';});
+function ask(text){ if(!ws||ws.readyState!==1)return;
+  subUser.textContent='» '+text; addLine('user',esc(text)); chips.innerHTML=''; subDante.innerHTML='';
+  curMsg={raw:''}; setPhase('thinking','sto pensando…'); ws.send(JSON.stringify({message:text})); }
+function finishTurn(said){ curMsg=null;
+  // parla la risposta, poi (se in conversazione) torna in ascolto
+  speak(said, ()=>{ if(convo) listen(); else setPhase('idle'); }); }
 
-/* ══════════ VOCE — output (TTS) ══════════ */
-function stripMd(t){return t.replace(/[#*`|>_]/g,'').replace(/\-{2,}/g,'').replace(/\s+/g,' ').trim().slice(0,600);}
-let itVoice=null;
-function pickVoice(){const v=speechSynthesis.getVoices();itVoice=v.find(x=>/it(-|_)?IT/i.test(x.lang))||v.find(x=>x.lang.startsWith('it'))||null;}
-if('speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice;}
-function speak(text){
-  if(!('speechSynthesis' in window)){state='idle';return;}
-  const u=new SpeechSynthesisUtterance(stripMd(text)); u.lang='it-IT'; if(itVoice)u.voice=itVoice; u.rate=1.05;
-  u.onstart=()=>{state='speaking';}; u.onend=()=>{state='idle';};
-  speechSynthesis.cancel(); speechSynthesis.speak(u);
+/* ══════════ voce in (STT) ══════════ */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let rec=null,recRunning=false;
+if(SR){rec=new SR();rec.lang='it-IT';rec.interimResults=true;rec.continuous=false;rec.maxAlternatives=1;
+ rec.onstart=()=>{recRunning=true;};
+ rec.onresult=e=>{let interim='',fin='';for(const r of e.results){if(r.isFinal)fin+=r[0].transcript;else interim+=r[0].transcript;}
+   if(fin)finalText=fin; subUser.textContent='» '+(fin||interim);};
+ rec.onerror=ev=>{recRunning=false;
+   if(ev.error==='not-allowed'||ev.error==='service-not-allowed'){convo=false;micBtn.classList.remove('live');
+     setPhase('idle','permesso microfono negato');hint.textContent='Consenti il microfono e riprova (icona lucchetto nella barra indirizzi)';}
+ };
+ rec.onend=()=>{recRunning=false;
+   const q=finalText.trim();finalText='';
+   if(q){ ask(q); }
+   else if(convo && phase==='listening'){ setTimeout(()=>{ if(convo)listen(); },250); } // niente parlato: riascolta
+ };
 }
-spkBtn.classList.add('on');
-spkBtn.onclick=()=>{speakOn=!speakOn; spkBtn.classList.toggle('on',speakOn); spkBtn.textContent=speakOn?'🔊':'🔇'; if(!speakOn)speechSynthesis.cancel();};
+function listen(){ if(!SR||recRunning)return; setPhase('listening','ti ascolto…'); micBtn.classList.add('live'); finalText='';
+ try{ speechSynthesis.cancel(); rec.start(); }catch(_){ } }
+function startConvo(){ if(!SR){setPhase('idle','riconoscimento vocale non supportato');hint.textContent='Usa Chrome o Edge per la voce, oppure scrivi con ⌨';return;}
+ convo=true; subDante.innerHTML=''; listen(); hint.textContent='Sto ascoltando — parla pure. Ritocca per fermare.'; }
+function stopConvo(){ convo=false; micBtn.classList.remove('live'); try{rec&&rec.stop();}catch(_){}
+ speechSynthesis.cancel(); setPhase('idle'); hint.textContent='Parla naturalmente · DANTE ti ascolta e risponde a voce'; }
+micBtn.onclick=()=>{ if(phase==='speaking'){ speechSynthesis.cancel(); if(convo)listen(); return; } convo?stopConvo():startConvo(); };
+canvas.style.pointerEvents='auto'; canvas.onclick=()=>micBtn.click();
 
-/* ══════════ VOCE — input (STT) ══════════ */
-const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-let rec=null,listening=false;
-if(SR){
-  rec=new SR(); rec.lang='it-IT'; rec.interimResults=true; rec.continuous=false;
-  rec.onresult=e=>{let txt='';for(const r of e.results)txt+=r[0].transcript; input.value=txt;
-    input.style.height='auto';input.style.height=Math.min(input.scrollHeight,120)+'px';};
-  rec.onend=()=>{listening=false;micBtn.classList.remove('rec');if(state==='listening')state='idle';
-    if(input.value.trim())send();};
-  rec.onerror=()=>{listening=false;micBtn.classList.remove('rec');state='idle';};
-  micBtn.onclick=()=>{ if(listening){rec.stop();return;}
-    speechSynthesis.cancel(); listening=true;state='listening';micBtn.classList.add('rec');
-    input.value=''; try{rec.start();}catch(_){} };
-}else{ micBtn.disabled=true; micBtn.title='Riconoscimento vocale non supportato dal browser'; }
+/* ══════════ controlli ══════════ */
+spkBtn.onclick=()=>{speakOn=!speakOn;spkBtn.classList.toggle('on',speakOn);spkBtn.textContent=speakOn?'🔊':'🔇';if(!speakOn)speechSynthesis.cancel();};
+scriptBtn.onclick=()=>{scriptEl.classList.toggle('show');scriptBtn.classList.toggle('on');};
+kbBtn.onclick=()=>{textbar.classList.toggle('show');kbBtn.classList.toggle('on');if(textbar.classList.contains('show'))txt.focus();};
+txt.addEventListener('keydown',e=>{if(e.key==='Enter'){const t=txt.value.trim();if(t){txt.value='';ask(t);}}});
 
-/* ══════════ orologio ══════════ */
-function tick(){const d=new Date();document.getElementById('clock').textContent=
-  String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');}
+function tick(){const d=new Date();document.getElementById('clock').textContent=[d.getHours(),d.getMinutes(),d.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');}
 setInterval(tick,1000);tick();
-
 connect();
 </script>
 </body>
