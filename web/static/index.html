@@ -350,8 +350,8 @@ function listen(){
   const t0=performance.now(); let lastLoud=t0;
   (function vad(){ if(!recording||!mediaRec||mediaRec.state!=='recording')return;
     const now=performance.now();
-    if(micLevel>0.11){spoke=true;lastLoud=now;subUser.textContent='» …';}
-    if(spoke&&now-lastLoud>800){stopRec();return;}       // pausa = fine turno (più reattivo)
+    if(micLevel>0.07){spoke=true;lastLoud=now;subUser.textContent='» …';}  // soglia bassa = cattura anche il parlato sommesso
+    if(spoke&&now-lastLoud>1200){stopRec();return;}      // pausa più lunga = non ti taglia a metà frase
     if(now-t0>15000){stopRec();return;}                   // limite max
     if(!spoke&&now-t0>7000){stopRec();return;}            // nessuna voce
     requestAnimationFrame(vad);})();

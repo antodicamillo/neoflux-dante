@@ -110,11 +110,22 @@ async def _get_whisper():
     return _whisper
 
 
-@app.post("/stt")
-async def stt(audio: UploadFile = File(...), _auth: bool = Depends(_require_auth)) -> dict:
-    raw = await audio.read()
-    if not raw:
-        return {"text": ""}
+async def _stt_elevenlabs(raw: bytes, content_type: str | None) -> str:
+    """STT via ElevenLabs Scribe: accurato e veloce, accetta il webm/opus del browser."""
+    files = {"file": ("audio.webm", raw, content_type or "audio/webm")}
+    # tag_audio_events=false: niente annotazioni tipo "(pausa)"/"(risata)" nel testo
+    data = {"model_id": "scribe_v1", "language_code": "it", "tag_audio_events": "false"}
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.post(
+            "https://api.elevenlabs.io/v1/speech-to-text",
+            headers={"xi-api-key": _EL_KEY}, data=data, files=files,
+        )
+        r.raise_for_status()
+        return (r.json().get("text") or "").strip()
+
+
+async def _stt_whisper(raw: bytes) -> tuple[str, str]:
+    """Ripiego locale: ffmpeg + faster-whisper (beam 5 per più accuratezza)."""
     src = tempfile.mktemp(suffix=".webm")
     wav = src + ".wav"
     try:
@@ -128,9 +139,8 @@ async def stt(audio: UploadFile = File(...), _auth: bool = Depends(_require_auth
         model = await _get_whisper()
 
         def _run() -> str:
-            # initial_prompt orienta Whisper sul vocabolario di dominio (acronimi inclusi)
             segments, _info = model.transcribe(
-                wav, language="it", beam_size=1, vad_filter=True,
+                wav, language="it", beam_size=5, vad_filter=True,
                 initial_prompt="Comando per l'assistente DANTE sull'infrastruttura Neoflux: "
                                "VPS, server, Virtualizor, Proxmox, cPanel, nodo, RAM, CPU, disco, "
                                "banda, servizio, container, host.",
@@ -138,9 +148,6 @@ async def stt(audio: UploadFile = File(...), _auth: bool = Depends(_require_auth
             return " ".join(s.text for s in segments).strip()
 
         text = await asyncio.to_thread(_run)
-
-        # Prosodia → traccia di umore, calcolata sullo STESSO wav 16k mono (costo ~10 ms).
-        # Fail-open: qualsiasi errore lascia hint="" e non tocca la trascrizione.
         hint = ""
         if _MOOD_ON and extract_prosody is not None and text:
             try:
@@ -148,13 +155,27 @@ async def stt(audio: UploadFile = File(...), _auth: bool = Depends(_require_auth
                 hint = _mood_phrase(feat)
             except Exception:
                 hint = ""
-        return {"text": text, "mood_hint": hint}
+        return text, hint
     finally:
         for p in (src, wav):
             try:
                 os.remove(p)
             except OSError:
                 pass
+
+
+@app.post("/stt")
+async def stt(audio: UploadFile = File(...), _auth: bool = Depends(_require_auth)) -> dict:
+    raw = await audio.read()
+    if not raw:
+        return {"text": ""}
+    if _EL_KEY:
+        try:
+            return {"text": await _stt_elevenlabs(raw, audio.content_type), "mood_hint": ""}
+        except Exception as exc:  # cloud giù/limite → ripiego locale
+            print(f"[stt] ElevenLabs Scribe fallito ({exc}); uso Whisper")
+    text, hint = await _stt_whisper(raw)
+    return {"text": text, "mood_hint": hint}
 
 
 # ── TTS: ElevenLabs (qualità JARVIS) come primario, Piper come ripiego locale ──
@@ -231,9 +252,38 @@ _snapshot = {"text": ""}
 async def _refresh_snapshot() -> str:
     def build() -> str:
         parts = []
-        for fn in (_vz.vz_list_servers, _vz.vz_list_vps, _vz.vz_server_loads):
+        try:
+            parts.append(_vz.vz_list_servers())
+        except Exception:
+            pass
+        # Statistiche LIVE di OGNI VPS in UNA riga compatta (poco contesto = risposte
+        # rapide) → così anche i dettagli ("quanta RAM usa wapoo?") si rispondono senza tool.
+        def _gb(mb):
             try:
-                parts.append(fn())
+                return round(int(float(mb)) / 1024, 1)
+            except (TypeError, ValueError):
+                return "?"
+        _ST = {"1": "online", "0": "offline", "2": "sospesa"}
+        try:
+            vps = _vz._collection(_vz._call(None, "vs", {"reslen": 100}), "vs", "vps")
+            lines = ["VPS (stato live):"]
+            for vid, v in vps.items():
+                try:
+                    vd = _vz._call(None, "vps_stats", {"vpsid": int(vid)}).get("vps_data") or {}
+                    s = next((x for x in vd.values() if isinstance(x, dict)), vd if isinstance(vd, dict) else {})
+                    lines.append(
+                        f"- {v.get('vps_name')} ({v.get('hostname')}): "
+                        f"{_ST.get(str(s.get('status','')), '?')}, CPU {s.get('used_cpu','?')}%, "
+                        f"RAM {_gb(s.get('used_ram'))}/{_gb(v.get('ram'))} GB, "
+                        f"disco {s.get('used_disk','?')}/{s.get('disk','?')} GB"
+                    )
+                except Exception:
+                    pass
+            if len(lines) > 1:
+                parts.append("\n".join(lines))
+        except Exception:
+            try:
+                parts.append(_vz.vz_list_vps())
             except Exception:
                 pass
         return "\n\n".join(p for p in parts if p)
