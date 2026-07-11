@@ -47,10 +47,12 @@ memoria condivisa tra i risvegli: backlog + cosa è già fatto. Aggiornalo sempr
 
 ### Pulizia + documentazione
 - [ ] Rimuovere codice morto (mood off, riferimenti Whisper primario)
-- [ ] Aggiornare README/CLAUDE/DEPLOY all'architettura attuale (Scribe, turbo, snapshot)
+- [x] CLAUDE.md riscritto all'architettura attuale (UI web vocale, ElevenLabs Scribe/turbo,
+      snapshot, circuit breaker, struttura, motori voce env, deploy systemd). FATTO. [README/DEPLOY: prossima iterazione]
 - [ ] Coerenza commenti/naming
 
 ## Fatto (log progressi)
+- Docs: CLAUDE.md aggiornato all'architettura reale (era fermo alla Fase 1 REPL). Nessun deploy (doc).
 - UI: icone dock da emoji a SVG inline (coerenti/crisp + accessibilità). Verificato con screenshot headless.
 - Osservabilità: soglie anche sul nodo fisico (RAM/disco) nella riga alert; refactor snapshot builder. Deploy verificato.
 - Robustezza: riconnessione WS con backoff esponenziale + reset stato su caduta a metà turno. Deploy verificato (WS ready ok).
