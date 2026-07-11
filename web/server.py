@@ -264,6 +264,13 @@ async def _refresh_snapshot() -> str:
             except (TypeError, ValueError):
                 return "?"
         _ST = {"1": "online", "0": "offline", "2": "sospesa"}
+        def _pct(used, tot):
+            try:
+                u, t = float(used), float(tot)
+                return round(u / t * 100) if t > 0 else None
+            except (TypeError, ValueError):
+                return None
+        alerts = []
         try:
             vps = _vz._collection(_vz._call(None, "vs", {"reslen": 100}), "vs", "vps")
             lines = ["VPS (stato live):"]
@@ -271,11 +278,22 @@ async def _refresh_snapshot() -> str:
                 try:
                     vd = _vz._call(None, "vps_stats", {"vpsid": int(vid)}).get("vps_data") or {}
                     s = next((x for x in vd.values() if isinstance(x, dict)), vd if isinstance(vd, dict) else {})
+                    name = v.get("vps_name")
+                    ram_pct = _pct(s.get("used_ram"), v.get("ram"))
+                    disk_pct = _pct(s.get("used_disk"), s.get("disk"))
+                    if str(s.get("status", "")) != "1":
+                        alerts.append(f"{name} NON online")
+                    if ram_pct is not None and ram_pct >= 85:
+                        alerts.append(f"{name} RAM al {ram_pct}%")
+                    if disk_pct is not None and disk_pct >= 80:
+                        alerts.append(f"{name} disco al {disk_pct}%")
                     lines.append(
-                        f"- {v.get('vps_name')} ({v.get('hostname')}): "
+                        f"- {name} ({v.get('hostname')}): "
                         f"{_ST.get(str(s.get('status','')), '?')}, CPU {s.get('used_cpu','?')}%, "
-                        f"RAM {_gb(s.get('used_ram'))}/{_gb(v.get('ram'))} GB, "
-                        f"disco {s.get('used_disk','?')}/{s.get('disk','?')} GB"
+                        f"RAM {_gb(s.get('used_ram'))}/{_gb(v.get('ram'))} GB"
+                        + (f" ({ram_pct}%)" if ram_pct is not None else "")
+                        + f", disco {s.get('used_disk','?')}/{s.get('disk','?')} GB"
+                        + (f" ({disk_pct}%)" if disk_pct is not None else "")
                     )
                 except Exception:
                     pass
@@ -286,7 +304,8 @@ async def _refresh_snapshot() -> str:
                 parts.append(_vz.vz_list_vps())
             except Exception:
                 pass
-        return "\n\n".join(p for p in parts if p)
+        head = ("⚠️ DA GUARDARE: " + "; ".join(alerts)) if alerts else "Nessun allarme: tutto nella norma."
+        return head + "\n\n" + "\n\n".join(p for p in parts if p)
     return await asyncio.to_thread(build)
 
 
