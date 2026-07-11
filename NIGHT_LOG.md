@@ -31,7 +31,7 @@ memoria condivisa tra i risvegli: backlog + cosa è già fatto. Aggiornalo sempr
 - [ ] Riconnessione WebSocket robusta (già base; irrobustire)
 - [ ] Resilienza snapshot poller (già try/except; aggiungere timestamp/età snapshot)
 - [ ] Test automatici (pytest) su: gate permessi, formattatori vz, routing STT/TTS
-- [ ] /health arricchito (motori attivi: scribe/whisper, el/piper, età snapshot)
+- [x] /health arricchito: stt/tts attivi + snapshot_age_s. FATTO, verificato.
 
 ### Osservabilità (snapshot)
 - [x] Rilevamento soglie: disco >80%, RAM >85%, VPS non online → riga "DA GUARDARE"/"Nessun
@@ -45,6 +45,7 @@ memoria condivisa tra i risvegli: backlog + cosa è già fatto. Aggiornalo sempr
 - [ ] Coerenza commenti/naming
 
 ## Fatto (log progressi)
+- Robustezza: /health ora riporta motori STT/TTS attivi + età snapshot; timestamp snapshot aggiunto. Deploy verificato.
 - (inizio turno) creato NIGHT_LOG.md
 - Osservabilità: snapshot con riga alert (soglie disco/RAM/online) + % per VPS. Deploy
   verificato (servizio active, smoke test: DANTE riferisce "nessun allarme"). Commit fatto.

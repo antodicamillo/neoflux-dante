@@ -21,6 +21,7 @@ import io
 import os
 import secrets
 import tempfile
+import time
 import wave
 from pathlib import Path
 
@@ -89,7 +90,14 @@ def index(_auth: bool = Depends(_require_auth)) -> str:
 
 @app.get("/health")
 def health() -> dict:
-    return {"ok": True, "auth": bool(_WEB_PASS), "stt": _WHISPER_MODEL}
+    ts = _snapshot.get("ts", 0)
+    return {
+        "ok": True,
+        "auth": bool(_WEB_PASS),
+        "stt": "elevenlabs-scribe" if _EL_KEY else f"whisper-{_WHISPER_MODEL}",
+        "tts": f"elevenlabs:{_EL_MODEL}" if _EL_KEY else "piper",
+        "snapshot_age_s": round(time.time() - ts) if ts else None,
+    }
 
 
 # ── STT locale (Whisper) — trascrizione sul box, privata, indipendente dal browser ──
@@ -313,6 +321,7 @@ async def _snapshot_loop() -> None:
     while True:
         try:
             _snapshot["text"] = await _refresh_snapshot()
+            _snapshot["ts"] = time.time()
         except Exception:
             pass
         await asyncio.sleep(30)
