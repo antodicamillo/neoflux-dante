@@ -321,7 +321,8 @@ let recording=false,mediaRec=null,recChunks=[],spoke=false;
 async function initMic(){
   if(micReady)return true;
   try{
-    micStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    // autoGainControl alza il volume del parlato sommesso, noiseSuppression pulisce → STT più accurato
+    micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
     const ctx=new (window.AudioContext||window.webkitAudioContext)();
     const src=ctx.createMediaStreamSource(micStream);
     analyser=ctx.createAnalyser();analyser.fftSize=256;micData=new Uint8Array(analyser.frequencyBinCount);
@@ -343,7 +344,7 @@ function listen(){
   recording=true; spoke=false; recChunks=[]; stopSpeaking();
   setPhase('listening','ti ascolto…'); micBtn.classList.add('live'); subUser.textContent='';
   const mime=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':(MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':'');
-  try{ mediaRec=mime?new MediaRecorder(micStream,{mimeType:mime}):new MediaRecorder(micStream); }
+  try{ const opt=mime?{mimeType:mime,audioBitsPerSecond:128000}:{audioBitsPerSecond:128000}; mediaRec=new MediaRecorder(micStream,opt); }
   catch(e){ recording=false; micBtn.classList.remove('live'); hint.textContent='Registrazione non supportata ('+e.name+')'; return; }
   mediaRec.ondataavailable=e=>{ if(e.data&&e.data.size)recChunks.push(e.data); };
   mediaRec.onstop=onRecStop; mediaRec.start();
@@ -351,7 +352,7 @@ function listen(){
   (function vad(){ if(!recording||!mediaRec||mediaRec.state!=='recording')return;
     const now=performance.now();
     if(micLevel>0.07){spoke=true;lastLoud=now;subUser.textContent='» …';}  // soglia bassa = cattura anche il parlato sommesso
-    if(spoke&&now-lastLoud>1200){stopRec();return;}      // pausa più lunga = non ti taglia a metà frase
+    if(spoke&&now-lastLoud>900){stopRec();return;}       // pausa fine-turno (compromesso reattività/cattura)
     if(now-t0>15000){stopRec();return;}                   // limite max
     if(!spoke&&now-t0>7000){stopRec();return;}            // nessuna voce
     requestAnimationFrame(vad);})();

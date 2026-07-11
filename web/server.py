@@ -181,9 +181,9 @@ async def stt(audio: UploadFile = File(...), _auth: bool = Depends(_require_auth
 # ── TTS: ElevenLabs (qualità JARVIS) come primario, Piper come ripiego locale ──
 _EL_KEY = os.environ.get("ELEVENLABS_API_KEY")
 _EL_VOICE = os.environ.get("ELEVENLABS_VOICE_ID", "JBFqnCBsd6RMkjVDRZzb")  # George (default)
-# multilingual_v2 = voce più realistica/espressiva (~1.6s). La voce NON è il collo
-# di bottiglia, quindi si può permettere la qualità massima.
-_EL_MODEL = os.environ.get("ELEVENLABS_MODEL", "eleven_multilingual_v2")
+# turbo_v2_5 = ottimo equilibrio realismo/latenza (~0.8s), metà tempo di multilingual_v2.
+# Per massima realisticità (ma più lento) si può rimettere eleven_multilingual_v2 via env.
+_EL_MODEL = os.environ.get("ELEVENLABS_MODEL", "eleven_turbo_v2_5")
 
 _PIPER_MODEL = os.environ.get(
     "DANTE_PIPER_MODEL",

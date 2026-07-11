@@ -151,7 +151,8 @@ def _allowed_tools() -> list:
 def build_options(mood_hint: str = "nessun indizio per ora") -> ClaudeAgentOptions:
     return ClaudeAgentOptions(
         system_prompt=system_prompt(mood_hint),
-        # Velocità: Sonnet (molto più rapido di Opus) + effort basso → risposte snelle.
+        # Sonnet + effort basso: risposte in ~2s dalla snapshot. (Haiku via abbonamento
+        # è risultato più lento e incostante, quindi restiamo su Sonnet.)
         model="claude-sonnet-5",
         effort="low",
         mcp_servers=_mcp_servers(),
