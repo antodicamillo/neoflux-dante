@@ -29,7 +29,8 @@ memoria condivisa tra i risvegli: backlog + cosa è già fatto. Aggiornalo sempr
 ### Robustezza & affidabilità
 - [x] Circuit breaker ElevenLabs: su 429/errore salta EL per 5 min → Piper/Whisper senza
       chiamate fallite ripetute. /health mostra cloud_voice attiva/cooldown. FATTO, verificato.
-- [ ] Riconnessione WebSocket robusta (già base; irrobustire)
+- [x] Riconnessione WebSocket robusta: backoff esponenziale (max 15s), niente timer
+      doppi, onerror→close, reset stato se cade a metà turno. FATTO, verificato.
 - [ ] Resilienza snapshot poller (già try/except; aggiungere timestamp/età snapshot)
 - [x] Test automatici (pytest): gate permessi, formattatori Virtualizor, config/persona.
       8 test, tutti verdi. tests/ + requirements-dev.txt. FATTO.
@@ -47,6 +48,7 @@ memoria condivisa tra i risvegli: backlog + cosa è già fatto. Aggiornalo sempr
 - [ ] Coerenza commenti/naming
 
 ## Fatto (log progressi)
+- Robustezza: riconnessione WS con backoff esponenziale + reset stato su caduta a metà turno. Deploy verificato (WS ready ok).
 - Robustezza: suite pytest (8 test) su gate/formattatori/config. Tutti verdi. Zero deploy (test locali).
 - Robustezza: circuit breaker ElevenLabs (cooldown 5min su fallimento) in /stt e /tts; /health espone cloud_voice. Deploy verificato.
 - Robustezza: /health ora riporta motori STT/TTS attivi + età snapshot; timestamp snapshot aggiunto. Deploy verificato.

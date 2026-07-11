@@ -291,9 +291,16 @@ function setPhase(p,label){phase=p;orbState=(p==='listening'||p==='thinking'||p=
  phaseEl.textContent=label||({idle:'tocca il microfono per parlare',listening:'ti ascolto…',thinking:'sto controllando…',speaking:'DANTE parla'}[p]);}
 function setConn(s,cls){conn.textContent=s;dot.className='dot '+(cls||'')}
 
-function connect(){const proto=location.protocol==='https:'?'wss':'ws';ws=new WebSocket(proto+'://'+location.host+'/ws');
- ws.onopen=()=>setConn('online','on');
- ws.onclose=()=>{setConn('riconnessione','err');setTimeout(connect,2000)};
+let _reconnAttempts=0,_reconnTimer=null;
+function scheduleReconnect(){ if(_reconnTimer)return;
+ const delay=Math.min(15000,1000*Math.pow(2,_reconnAttempts++));  // backoff esponenziale, max 15s
+ _reconnTimer=setTimeout(()=>{_reconnTimer=null;connect();},delay); }
+function connect(){const proto=location.protocol==='https:'?'wss':'ws';
+ try{ ws=new WebSocket(proto+'://'+location.host+'/ws'); }catch(_){ scheduleReconnect(); return; }
+ ws.onopen=()=>{_reconnAttempts=0;setConn('online','on');};
+ ws.onerror=()=>{ try{ws.close();}catch(_){} };
+ ws.onclose=()=>{ if(curMsg){curMsg=null;setPhase('idle');}  // caduta a metà turno: non bloccare la UI
+   setConn('riconnessione','err'); scheduleReconnect(); };
  ws.onmessage=e=>{const d=JSON.parse(e.data);
   if(d.type==='ready'){setConn('online','on');}
   else if(d.type==='tool'){if(!curMsg)return;setPhase('thinking','sto controllando i server…');
