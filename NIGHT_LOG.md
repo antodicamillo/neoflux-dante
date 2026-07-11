@@ -41,7 +41,7 @@ memoria condivisa tra i risvegli: backlog + cosa è già fatto. Aggiornalo sempr
 ### Osservabilità (snapshot)
 - [x] Rilevamento soglie: disco >80%, RAM >85%, VPS non online → riga "DA GUARDARE"/"Nessun
       allarme" in cima alla snapshot + percentuali per VPS. FATTO, verificato.
-- [ ] Banda per VPS nella snapshot
+- [x] Banda usata per VPS nella snapshot compatta. FATTO, verificato (risponde senza tool).
 - [x] Soglie sul nodo fisico (RAM >85%, disco >80%) → confluiscono nella riga alert.
       Refactor snapshot: helper in cima, dati nodo raw riusati. FATTO, verificato.
 
@@ -52,6 +52,7 @@ memoria condivisa tra i risvegli: backlog + cosa è già fatto. Aggiornalo sempr
 - [ ] Coerenza commenti/naming
 
 ## Fatto (log progressi)
+- Osservabilità: banda usata per VPS nella snapshot. Deploy verificato. (Sezione osservabilità COMPLETA.)
 - Docs: CLAUDE.md aggiornato all'architettura reale (era fermo alla Fase 1 REPL). Nessun deploy (doc).
 - UI: icone dock da emoji a SVG inline (coerenti/crisp + accessibilità). Verificato con screenshot headless.
 - Osservabilità: soglie anche sul nodo fisico (RAM/disco) nella riga alert; refactor snapshot builder. Deploy verificato.

@@ -333,6 +333,7 @@ async def _refresh_snapshot() -> str:
                         alerts.append(f"{name} RAM al {ram_pct}%")
                     if disk_pct is not None and disk_pct >= 80:
                         alerts.append(f"{name} disco al {disk_pct}%")
+                    bw = s.get("used_bandwidth")
                     lines.append(
                         f"- {name} ({v.get('hostname')}): "
                         f"{_ST.get(str(s.get('status','')), '?')}, CPU {s.get('used_cpu','?')}%, "
@@ -340,6 +341,7 @@ async def _refresh_snapshot() -> str:
                         + (f" ({ram_pct}%)" if ram_pct is not None else "")
                         + f", disco {s.get('used_disk','?')}/{s.get('disk','?')} GB"
                         + (f" ({disk_pct}%)" if disk_pct is not None else "")
+                        + (f", banda {bw} GB usati" if bw not in (None, "", "0") else "")
                     )
                 except Exception:
                     pass
