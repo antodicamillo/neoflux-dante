@@ -51,7 +51,18 @@ memoria condivisa tra i risvegli: backlog + cosa è già fatto. Aggiornalo sempr
       snapshot, circuit breaker, struttura, motori voce env, deploy systemd). FATTO. [README/DEPLOY: prossima iterazione]
 - [ ] Coerenza commenti/naming
 
+
+## ⚠️ IMPORTANTE PER ANTONIO (05:34)
+- Il box ha **cambiato IP** da 192.168.0.202 a **192.168.0.201** (reset DHCP notturno,
+  anche il Mac è passato .201→.101). DANTE è SANO e ATTIVO, ma l'URL è cambiato:
+  ora è **https://192.168.0.201:8800** (il vecchio .202 non risponde più).
+- CAUSA: il box è in DHCP, senza IP statico → l'indirizzo può cambiare di nuovo.
+  **DA FARE (tu):** assegnare un IP STATICO / reservation DHCP al box (netplan o router),
+  così l'URL resta fisso. Non l'ho fatto io (cambiare la rete del box = rischio lockout).
+- Il loop ora usa scripts/box-ip.sh per scoprire l'IP → resiliente ai cambi DHCP.
+
 ## Fatto (log progressi)
+- Ops: box migrato a .201 (DHCP), servizio sano; creato scripts/box-ip.sh per scoprire l'IP; loop reso IP-resiliente. Flag static-IP per Antonio.
 - Osservabilità: banda usata per VPS nella snapshot. Deploy verificato. (Sezione osservabilità COMPLETA.)
 - Docs: CLAUDE.md aggiornato all'architettura reale (era fermo alla Fase 1 REPL). Nessun deploy (doc).
 - UI: icone dock da emoji a SVG inline (coerenti/crisp + accessibilità). Verificato con screenshot headless.
