@@ -40,7 +40,8 @@ memoria condivisa tra i risvegli: backlog + cosa è già fatto. Aggiornalo sempr
 - [x] Rilevamento soglie: disco >80%, RAM >85%, VPS non online → riga "DA GUARDARE"/"Nessun
       allarme" in cima alla snapshot + percentuali per VPS. FATTO, verificato.
 - [ ] Banda per VPS nella snapshot
-- [ ] Soglie anche sul nodo fisico (RAM/disco del nodo)
+- [x] Soglie sul nodo fisico (RAM >85%, disco >80%) → confluiscono nella riga alert.
+      Refactor snapshot: helper in cima, dati nodo raw riusati. FATTO, verificato.
 
 ### Pulizia + documentazione
 - [ ] Rimuovere codice morto (mood off, riferimenti Whisper primario)
@@ -48,6 +49,7 @@ memoria condivisa tra i risvegli: backlog + cosa è già fatto. Aggiornalo sempr
 - [ ] Coerenza commenti/naming
 
 ## Fatto (log progressi)
+- Osservabilità: soglie anche sul nodo fisico (RAM/disco) nella riga alert; refactor snapshot builder. Deploy verificato.
 - Robustezza: riconnessione WS con backoff esponenziale + reset stato su caduta a metà turno. Deploy verificato (WS ready ok).
 - Robustezza: suite pytest (8 test) su gate/formattatori/config. Tutti verdi. Zero deploy (test locali).
 - Robustezza: circuit breaker ElevenLabs (cooldown 5min su fallimento) in /stt e /tts; /health espone cloud_voice. Deploy verificato.

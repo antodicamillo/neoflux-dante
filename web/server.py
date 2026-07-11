@@ -279,12 +279,6 @@ _snapshot = {"text": ""}
 async def _refresh_snapshot() -> str:
     def build() -> str:
         parts = []
-        try:
-            parts.append(_vz.vz_list_servers())
-        except Exception:
-            pass
-        # Statistiche LIVE di OGNI VPS in UNA riga compatta (poco contesto = risposte
-        # rapide) → così anche i dettagli ("quanta RAM usa wapoo?") si rispondono senza tool.
         def _gb(mb):
             try:
                 return round(int(float(mb)) / 1024, 1)
@@ -298,6 +292,31 @@ async def _refresh_snapshot() -> str:
             except (TypeError, ValueError):
                 return None
         alerts = []
+        # Nodo fisico: display + soglie. In Virtualizor ram/space del nodo sono i valori LIBERI.
+        try:
+            sdata = _vz._call(None, "servers", {})
+            parts.append(_vz._fmt_servers(sdata))
+            nodes = sdata.get("servers") or sdata.get("servs") or []
+            if isinstance(nodes, dict):
+                nodes = list(nodes.values())
+            for s in nodes:
+                try:
+                    nm = s.get("server_name", "nodo")
+                    tr, fr = float(s.get("total_ram", 0)), float(s.get("ram", 0))
+                    ts, fs = float(s.get("total_space", 0)), float(s.get("space", 0))
+                    rp, dp = _pct(tr - fr, tr), _pct(ts - fs, ts)
+                    if rp is not None and rp >= 85:
+                        alerts.append(f"nodo {nm} RAM al {rp}%")
+                    if dp is not None and dp >= 80:
+                        alerts.append(f"nodo {nm} disco al {dp}%")
+                except Exception:
+                    pass
+        except Exception:
+            try:
+                parts.append(_vz.vz_list_servers())
+            except Exception:
+                pass
+        # Statistiche LIVE di OGNI VPS in UNA riga compatta (poco contesto = risposte rapide).
         try:
             vps = _vz._collection(_vz._call(None, "vs", {"reslen": 100}), "vs", "vps")
             lines = ["VPS (stato live):"]
