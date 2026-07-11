@@ -20,6 +20,8 @@ memoria condivisa tra i risvegli: backlog + cosa è già fatto. Aggiornalo sempr
 ## Backlog (in ordine di priorità)
 
 ### Interfaccia (ho gli screenshot: web/../scratchpad/shot/shot.js)
+- [x] Icone dock in SVG (mic/tastiera/altoparlante/menu) invece di emoji: nitide, coerenti
+      su ogni OS/browser, + aria-label. Verificato via screenshot. FATTO.
 - [ ] Rivedere composizione/estetica orb con screenshot iterativi
 - [ ] Rendere leggibili/eleganti gli stati (badge connessione, hint)
 - [ ] Stati di errore/caricamento chiari (es. "voce non disponibile", quota EL finita)
@@ -49,6 +51,7 @@ memoria condivisa tra i risvegli: backlog + cosa è già fatto. Aggiornalo sempr
 - [ ] Coerenza commenti/naming
 
 ## Fatto (log progressi)
+- UI: icone dock da emoji a SVG inline (coerenti/crisp + accessibilità). Verificato con screenshot headless.
 - Osservabilità: soglie anche sul nodo fisico (RAM/disco) nella riga alert; refactor snapshot builder. Deploy verificato.
 - Robustezza: riconnessione WS con backoff esponenziale + reset stato su caduta a metà turno. Deploy verificato (WS ready ok).
 - Robustezza: suite pytest (8 test) su gate/formattatori/config. Tutti verdi. Zero deploy (test locali).

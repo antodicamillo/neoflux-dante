@@ -128,10 +128,18 @@
   </div>
 
   <div class="dock">
-    <button class="mini" id="kb" title="Scrivi invece di parlare">⌨</button>
-    <button class="mic" id="mic" title="Parla con DANTE">🎙</button>
-    <button class="mini on" id="spk" title="Voce di DANTE on/off">🔊</button>
-    <button class="mini" id="scriptBtn" title="Trascrizione">☰</button>
+    <button class="mini" id="kb" title="Scrivi invece di parlare" aria-label="Scrivi">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
+    </button>
+    <button class="mic" id="mic" title="Parla con DANTE" aria-label="Parla">
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v4M9 21h6"/></svg>
+    </button>
+    <button class="mini on" id="spk" title="Voce di DANTE on/off" aria-label="Voce on/off">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8.5a4 4 0 0 1 0 7"/><path d="M18.7 6a8 8 0 0 1 0 12"/></svg>
+    </button>
+    <button class="mini" id="scriptBtn" title="Trascrizione" aria-label="Trascrizione">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+    </button>
   </div>
   <div class="hint" id="hint">Parla naturalmente · DANTE ti ascolta e risponde a voce</div>
 
@@ -391,7 +399,9 @@ micBtn.onclick=()=>{ if(phase==='speaking'){ stopSpeaking(); if(convo)listen(); 
 canvas.style.pointerEvents='auto'; canvas.onclick=()=>micBtn.click();
 
 /* ══════════ controlli ══════════ */
-spkBtn.onclick=()=>{speakOn=!speakOn;spkBtn.classList.toggle('on',speakOn);spkBtn.textContent=speakOn?'🔊':'🔇';if(!speakOn)stopSpeaking();};
+const _SPK_ON='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8.5a4 4 0 0 1 0 7"/><path d="M18.7 6a8 8 0 0 1 0 12"/></svg>';
+const _SPK_OFF='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9l5 6M21 9l-5 6"/></svg>';
+spkBtn.onclick=()=>{speakOn=!speakOn;spkBtn.classList.toggle('on',speakOn);spkBtn.innerHTML=speakOn?_SPK_ON:_SPK_OFF;if(!speakOn)stopSpeaking();};
 scriptBtn.onclick=()=>{scriptEl.classList.toggle('show');scriptBtn.classList.toggle('on');};
 kbBtn.onclick=()=>{textbar.classList.toggle('show');kbBtn.classList.toggle('on');if(textbar.classList.contains('show'))txt.focus();};
 txt.addEventListener('keydown',e=>{if(e.key==='Enter'){const t=txt.value.trim();if(t){txt.value='';ask(t);}}});
