@@ -48,7 +48,7 @@ memoria condivisa tra i risvegli: backlog + cosa è già fatto. Aggiornalo sempr
 ### Pulizia + documentazione
 - [ ] Rimuovere codice morto (mood off, riferimenti Whisper primario)
 - [x] CLAUDE.md riscritto all'architettura attuale (UI web vocale, ElevenLabs Scribe/turbo,
-      snapshot, circuit breaker, struttura, motori voce env, deploy systemd). FATTO. [README/DEPLOY: prossima iterazione]
+      snapshot, circuit breaker, struttura, motori voce env, deploy systemd). FATTO. README pure aggiornato. [DEPLOY: minori]
 - [ ] Coerenza commenti/naming
 
 
@@ -62,6 +62,7 @@ memoria condivisa tra i risvegli: backlog + cosa è già fatto. Aggiornalo sempr
 - Il loop ora usa scripts/box-ip.sh per scoprire l'IP → resiliente ai cambi DHCP.
 
 ## Fatto (log progressi)
+- Docs: README.md riscritto (assistente vocale web, motori voce ElevenLabs/locali, uso, config env, sicurezza). Nessun deploy.
 - Ops: box migrato a .201 (DHCP), servizio sano; creato scripts/box-ip.sh per scoprire l'IP; loop reso IP-resiliente. Flag static-IP per Antonio.
 - Osservabilità: banda usata per VPS nella snapshot. Deploy verificato. (Sezione osservabilità COMPLETA.)
 - Docs: CLAUDE.md aggiornato all'architettura reale (era fermo alla Fase 1 REPL). Nessun deploy (doc).

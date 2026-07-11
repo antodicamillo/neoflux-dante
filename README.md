@@ -1,67 +1,56 @@
 # 🛰️ DANTE
 
-**D**on't **A**sk, **N**othing's **T**ruly **E**xploding — l'assistente operativo
-AI di **Neoflux**, sullo stile "JARVIS", costruito con **Claude Agent SDK** + **MCP**.
+**D**on't **A**sk, **N**othing's **T**ruly **E**xploding — l'**assistente vocale** AI di
+**Neoflux**, stile "JARVIS". Ci **parli** e ti **risponde a voce**: osserva l'infrastruttura
+(Virtualizor, server Linux) e ti dice come stanno le cose, con un carattere spiritoso.
 
-DANTE aiuta a gestire l'infrastruttura Neoflux (Linux, Proxmox, cPanel/Plesk).
-È progettato per crescere per **fasi**: oggi è un **Osservatore in sola lettura**,
-sicuro da usare da subito; le azioni di scrittura arriveranno dietro approvazione.
+Costruito su **Claude Agent SDK** + **MCP**. Oggi è un **Osservatore in sola lettura**
+(sicuro da usare); le azioni di scrittura arriveranno dietro approvazione umana.
 
-## Requisiti
-- **Python 3.13** (o ≥ 3.10)
-- CLI **`claude`** autenticata (stessa auth di Claude Code — nessuna API key extra)
-- Accesso SSH agli host, idealmente con un **utente dedicato di sola lettura**
+## Com'è fatto
+```
+Browser (UI voce-first: orb 3D, parli col microfono)
+   │ HTTPS + WebSocket
+web/server.py (FastAPI, servizio systemd sul box)
+   ├─ voce → parlato:  ElevenLabs Scribe   (ripiego locale: Whisper)
+   ├─ cervello:        Claude (Agent SDK) + snapshot infra → risposte in ~2s
+   ├─ risposta → voce: ElevenLabs "George" (ripiego locale: Piper)
+   └─ snapshot: interroga Virtualizor ogni 30s (nodo, VPS live, alert)
+        │ MCP (solo lettura)
+   Virtualizor Admin API · host SSH
+```
 
-## Installazione
+## Come si usa (produzione)
+Gira come servizio `dante-web` sul ProLiant. Apri nel browser (Chrome/Edge/Brave):
+**`https://<IP-box>:8800`** → accedi (Basic Auth) → tocca il microfono → **parla**.
+
+> ⚠️ Il box è in DHCP: l'IP può cambiare. Trovalo con `scripts/box-ip.sh`.
+> Consigliato assegnargli un **IP statico / reservation**.
+
+Esempi: *"Come stanno i server?"* · *"Quanta RAM usa wapoo?"* · *"Ci sono allarmi?"*
+
+## Sviluppo / test locale
 ```bash
-python3.13 -m venv .venv
-source .venv/bin/activate
+python3.13 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-
-cp config/inventory.example.yaml config/inventory.yaml
-# → compila config/inventory.yaml con i tuoi host SSH
-
-cp config/virtualizor.example.yaml config/virtualizor.yaml
-# → inserisci host + apikey/apipass del master Virtualizor
+cp config/virtualizor.example.yaml config/virtualizor.yaml   # + credenziali Admin API
+python -m agent.dante        # REPL testuale da terminale
 ```
+Auth cervello: CLI `claude` autenticata, oppure `CLAUDE_CODE_OAUTH_TOKEN` (headless).
+Test: `python -m pytest tests/ -q`.
 
-## Avvio
-```bash
-python -m agent.dante
-```
-Poi chiedi, ad esempio:
-- *"Quali host gestiamo?"*
-- *"Dammi una panoramica di web-01"*
-- *"Ci sono servizi failed su db-01?"*
-- *"Mostrami le ultime 50 righe di /var/log/nginx/error.log su web-01"*
+## Configurazione (env / .env sul box)
+| Variabile | Effetto |
+|-----------|---------|
+| `CLAUDE_CODE_OAUTH_TOKEN` | auth cervello headless (abbonamento) |
+| `ELEVENLABS_API_KEY` | voce cloud (STT Scribe + TTS); se assente → Whisper + Piper |
+| `ELEVENLABS_VOICE_ID` / `ELEVENLABS_MODEL` | voce (default George / turbo_v2_5) |
+| `DANTE_WEB_USER` / `DANTE_WEB_PASSWORD` | Basic Auth della UI (obbligatoria) |
+| `DANTE_MOOD=1` | riattiva la lettura prosodica dell'umore (soglie da tarare) |
 
-## Cosa può fare (Fase 1)
-| Strumento | Descrizione |
-|-----------|-------------|
-| `list_hosts` | Elenca gli host in inventario |
-| `host_overview` | Uptime, carico, memoria, disco, top processi |
-| `disk_usage` | `df -h` |
-| `memory_usage` | `free -h` |
-| `service_status` | `systemctl status <servizio>` |
-| `failed_services` | Unità systemd in stato failed |
-| `tail_log` | Ultime righe di un log sotto `/var/log/` |
+## Sicurezza (Fase 1 = sola lettura)
+- Gate `agent/permissions.py`: consente solo i tool `mcp__neoflux-*` + `ToolSearch`, nega il resto.
+- I server MCP espongono solo endpoint/comandi **fissi di lettura**, input validati.
+- Segreti in `config/*.yaml` e `.env` (gitignored). UI protetta da Basic Auth + HTTPS.
 
-**Virtualizor** (Admin API, read-only):
-
-| Strumento | Descrizione |
-|-----------|-------------|
-| `vz_list_servers` | Elenca i nodi (hypervisor) |
-| `vz_list_vps` | Elenca le VPS (filtri: search, status, page) |
-| `vz_vps_info` | Dettagli di una VPS |
-| `vz_vps_stats` | Metriche live: CPU, RAM, disco, banda |
-| `vz_server_loads` | VPS ordinate per carico (load 1/5/15m) |
-
-Tutti **read-only**. DANTE non può modificare nulla in questa fase.
-
-## Sicurezza
-- Gate `can_use_tool`: consente solo i tool `mcp__neoflux-*`, nega il resto.
-- Tool MCP = comandi fissi di lettura, input validati e shell-quotati.
-- Audit completo in `logs/audit.log`.
-- Segreti in `config/inventory.yaml` / `.env` (gitignored).
-
-Vedi **[CLAUDE.md](./CLAUDE.md)** per architettura, regole e roadmap complete.
+Dettagli architettura, struttura e roadmap: **[CLAUDE.md](./CLAUDE.md)** · deploy: **[DEPLOY.md](./DEPLOY.md)**.
