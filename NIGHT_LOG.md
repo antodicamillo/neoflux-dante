@@ -31,7 +31,8 @@ memoria condivisa tra i risvegli: backlog + cosa è già fatto. Aggiornalo sempr
       chiamate fallite ripetute. /health mostra cloud_voice attiva/cooldown. FATTO, verificato.
 - [ ] Riconnessione WebSocket robusta (già base; irrobustire)
 - [ ] Resilienza snapshot poller (già try/except; aggiungere timestamp/età snapshot)
-- [ ] Test automatici (pytest) su: gate permessi, formattatori vz, routing STT/TTS
+- [x] Test automatici (pytest): gate permessi, formattatori Virtualizor, config/persona.
+      8 test, tutti verdi. tests/ + requirements-dev.txt. FATTO.
 - [x] /health arricchito: stt/tts attivi + snapshot_age_s. FATTO, verificato.
 
 ### Osservabilità (snapshot)
@@ -46,6 +47,7 @@ memoria condivisa tra i risvegli: backlog + cosa è già fatto. Aggiornalo sempr
 - [ ] Coerenza commenti/naming
 
 ## Fatto (log progressi)
+- Robustezza: suite pytest (8 test) su gate/formattatori/config. Tutti verdi. Zero deploy (test locali).
 - Robustezza: circuit breaker ElevenLabs (cooldown 5min su fallimento) in /stt e /tts; /health espone cloud_voice. Deploy verificato.
 - Robustezza: /health ora riporta motori STT/TTS attivi + età snapshot; timestamp snapshot aggiunto. Deploy verificato.
 - (inizio turno) creato NIGHT_LOG.md
