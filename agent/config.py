@@ -82,8 +82,11 @@ sistemare qualcosa, spiegalo con garbo e un sorriso: "Per adesso guardo e riferi
 Capo — le mani sui server me le legano ancora. Posso dirti cosa farei, se vuoi."
 
 ── STRUMENTI ──
-- L'infrastruttura PRINCIPALE è su Virtualizor. Per "come stanno i server / le VPS",
-  stato, carichi, RAM, guarda LÌ di default: mcp__neoflux-virtualizor__* (vz_list_servers,
+- VELOCITÀ: spesso ricevi già un blocco [STATO INFRA] con nodi e VPS aggiornati. Per lo
+  stato GENERALE ("come stanno i server?", "tutto ok?", "quante VPS?") rispondi DA LÌ,
+  SENZA lanciare strumenti — è molto più rapido. Usa gli strumenti solo per dettagli
+  specifici non già presenti nello [STATO INFRA].
+- L'infrastruttura PRINCIPALE è su Virtualizor: mcp__neoflux-virtualizor__* (vz_list_servers,
   vz_list_vps, vz_vps_info, vz_vps_stats, vz_server_loads).
 - mcp__neoflux-ssh__* (host_overview, disk_usage, service_status, failed_services,
   tail_log): SOLO per host SSH specifici, se configurati. L'inventario SSH è spesso
@@ -97,26 +100,63 @@ def system_prompt(mood_hint: str = "nessun indizio per ora") -> str:
     return SYSTEM_PROMPT_TEMPLATE.format(mood_hint=mood_hint)
 
 
+def _ssh_configured() -> bool:
+    """True se l'inventario SSH ha almeno un host. Se vuoto, non carichiamo il server
+    SSH: meno tool = niente giro di ToolSearch = risposte più rapide."""
+    try:
+        import yaml
+        p = PROJECT_ROOT / "config" / "inventory.yaml"
+        if not p.exists():
+            return False
+        data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+        return bool(data.get("hosts"))
+    except Exception:
+        return False
+
+
+_VZ_TOOLS = [
+    "mcp__neoflux-virtualizor__vz_list_servers", "mcp__neoflux-virtualizor__vz_server_loads",
+    "mcp__neoflux-virtualizor__vz_list_vps", "mcp__neoflux-virtualizor__vz_vps_info",
+    "mcp__neoflux-virtualizor__vz_vps_stats",
+]
+_SSH_TOOLS = [
+    "mcp__neoflux-ssh__list_hosts", "mcp__neoflux-ssh__host_overview",
+    "mcp__neoflux-ssh__disk_usage", "mcp__neoflux-ssh__memory_usage",
+    "mcp__neoflux-ssh__service_status", "mcp__neoflux-ssh__failed_services",
+    "mcp__neoflux-ssh__tail_log",
+]
+
+
+def _mcp_servers() -> dict:
+    servers = {
+        "neoflux-virtualizor": {
+            "type": "stdio", "command": VENV_PYTHON,
+            "args": ["-m", "mcp_servers.virtualizor_read"],
+            "env": {"PYTHONPATH": str(PROJECT_ROOT)},
+        },
+    }
+    if _ssh_configured():
+        servers["neoflux-ssh"] = {
+            "type": "stdio", "command": VENV_PYTHON,
+            "args": ["-m", "mcp_servers.ssh_read"],
+            "env": {"PYTHONPATH": str(PROJECT_ROOT)},
+        }
+    return servers
+
+
+def _allowed_tools() -> list:
+    return _VZ_TOOLS + (_SSH_TOOLS if _ssh_configured() else [])
+
+
 def build_options(mood_hint: str = "nessun indizio per ora") -> ClaudeAgentOptions:
     return ClaudeAgentOptions(
         system_prompt=system_prompt(mood_hint),
         # Velocità: Sonnet (molto più rapido di Opus) + effort basso → risposte snelle.
         model="claude-sonnet-5",
         effort="low",
-        mcp_servers={
-            "neoflux-ssh": {
-                "type": "stdio",
-                "command": VENV_PYTHON,
-                "args": ["-m", "mcp_servers.ssh_read"],
-                "env": {"PYTHONPATH": str(PROJECT_ROOT)},
-            },
-            "neoflux-virtualizor": {
-                "type": "stdio",
-                "command": VENV_PYTHON,
-                "args": ["-m", "mcp_servers.virtualizor_read"],
-                "env": {"PYTHONPATH": str(PROJECT_ROOT)},
-            },
-        },
+        mcp_servers=_mcp_servers(),
+        # Pre-autorizza i tool MCP disponibili (in base a cosa è configurato).
+        allowed_tools=_allowed_tools(),
         # Difesa in profondità: gli strumenti pericolosi sono comunque hard-bloccati,
         # a prescindere dal gate. Il gate PreToolUse resta la fonte di verità.
         disallowed_tools=[

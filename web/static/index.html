@@ -351,7 +351,7 @@ function listen(){
   (function vad(){ if(!recording||!mediaRec||mediaRec.state!=='recording')return;
     const now=performance.now();
     if(micLevel>0.11){spoke=true;lastLoud=now;subUser.textContent='» …';}
-    if(spoke&&now-lastLoud>1100){stopRec();return;}      // pausa = fine turno
+    if(spoke&&now-lastLoud>800){stopRec();return;}       // pausa = fine turno (più reattivo)
     if(now-t0>15000){stopRec();return;}                   // limite max
     if(!spoke&&now-t0>7000){stopRec();return;}            // nessuna voce
     requestAnimationFrame(vad);})();

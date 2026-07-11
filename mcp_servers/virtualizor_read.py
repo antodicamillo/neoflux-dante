@@ -119,13 +119,18 @@ def _fmt_servers(data: dict) -> str:
         servers = list(servers.values())
     if not servers:
         return f"Nessun nodo trovato. Chiavi risposta: {list(data)[:8]}"
+    def _gb(mb):
+        try:
+            return str(round(int(mb) / 1024))
+        except (TypeError, ValueError):
+            return "?"
     lines = ["Nodi Virtualizor:"]
     for s in servers:
         lines.append(
             f"- [{s.get('serid','?')}] {s.get('server_name','?')} ({s.get('ip','?')}) "
             f"virt={s.get('virt','?')}\n"
-            f"    RAM disp. {s.get('ram','?')}/{s.get('total_ram','?')} MB · "
-            f"disco disp. {s.get('space','?')}/{s.get('total_space','?')} GB · "
+            f"    RAM libera {_gb(s.get('ram'))} GB su {_gb(s.get('total_ram'))} GB · "
+            f"disco libero {s.get('space','?')} GB su {s.get('total_space','?')} GB · "
             f"{s.get('os','')}".rstrip()
         )
     return "\n".join(lines)

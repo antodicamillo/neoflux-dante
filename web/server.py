@@ -42,6 +42,9 @@ from claude_agent_sdk import (
 # import di agent.config: attiva anche il loader del .env (ANTHROPIC/OAUTH + DANTE_WEB_*)
 from agent.config import build_options
 
+# Snapshot infra sempre pronta (poller in background) → risposte rapide senza tool
+from mcp_servers import virtualizor_read as _vz
+
 # Lettura leggera dell'umore dalla voce (solo prosodia, numpy). Import difensivo:
 # è un segnale cosmetico, non deve mai far cadere la trascrizione se numpy manca.
 try:
@@ -157,7 +160,9 @@ async def stt(audio: UploadFile = File(...), _auth: bool = Depends(_require_auth
 # ── TTS: ElevenLabs (qualità JARVIS) come primario, Piper come ripiego locale ──
 _EL_KEY = os.environ.get("ELEVENLABS_API_KEY")
 _EL_VOICE = os.environ.get("ELEVENLABS_VOICE_ID", "JBFqnCBsd6RMkjVDRZzb")  # George (default)
-_EL_MODEL = os.environ.get("ELEVENLABS_MODEL", "eleven_flash_v2_5")        # bassa latenza, italiano
+# multilingual_v2 = voce più realistica/espressiva (~1.6s). La voce NON è il collo
+# di bottiglia, quindi si può permettere la qualità massima.
+_EL_MODEL = os.environ.get("ELEVENLABS_MODEL", "eleven_multilingual_v2")
 
 _PIPER_MODEL = os.environ.get(
     "DANTE_PIPER_MODEL",
@@ -184,8 +189,9 @@ async def _tts_elevenlabs(text: str) -> bytes:
             url, params={"output_format": "mp3_44100_128"},
             headers={"xi-api-key": _EL_KEY, "Content-Type": "application/json"},
             json={"text": text, "model_id": _EL_MODEL, "language_code": "it",
-                  "voice_settings": {"stability": 0.45, "similarity_boost": 0.8,
-                                     "style": 0.1, "use_speaker_boost": True}},
+                  # stabilità bassa + un po' di stile = più espressiva/umana
+                  "voice_settings": {"stability": 0.35, "similarity_boost": 0.85,
+                                     "style": 0.3, "use_speaker_boost": True}},
         )
         r.raise_for_status()
         return r.content
@@ -216,6 +222,36 @@ async def tts(payload: dict = Body(...), _auth: bool = Depends(_require_auth)) -
         except Exception as exc:  # cloud giù o limite raggiunto → ripiego locale
             print(f"[tts] ElevenLabs fallito ({exc}); uso Piper")
     return Response(content=await _tts_piper(text), media_type="audio/wav")
+
+
+# ── Snapshot infrastruttura: poller in background, iniettata in ogni turno ──
+_snapshot = {"text": ""}
+
+
+async def _refresh_snapshot() -> str:
+    def build() -> str:
+        parts = []
+        for fn in (_vz.vz_list_servers, _vz.vz_list_vps, _vz.vz_server_loads):
+            try:
+                parts.append(fn())
+            except Exception:
+                pass
+        return "\n\n".join(p for p in parts if p)
+    return await asyncio.to_thread(build)
+
+
+async def _snapshot_loop() -> None:
+    while True:
+        try:
+            _snapshot["text"] = await _refresh_snapshot()
+        except Exception:
+            pass
+        await asyncio.sleep(30)
+
+
+@app.on_event("startup")
+async def _on_startup() -> None:
+    asyncio.create_task(_snapshot_loop())
 
 
 def _ws_authorized(websocket: WebSocket) -> bool:
@@ -252,7 +288,16 @@ async def ws(websocket: WebSocket) -> None:
                 # È per-turno (il client ws è persistente, quindi NON va messo nel system prompt,
                 # che resterebbe congelato al primo turno). Non è un ordine: solo un indizio.
                 hint = (data.get("mood_hint") or "").strip()
-                payload = f"[UMORE UTENTE: {hint}]\n{message}" if hint else message
+                prefix = ""
+                snap = _snapshot.get("text", "")
+                if snap:
+                    prefix += ("[STATO INFRA — aggiornato negli ultimi ~30s. Per domande generali su "
+                               "stato/salute di server e VPS rispondi DA QUI, senza usare strumenti. "
+                               "Usa gli strumenti SOLO per dettagli specifici non presenti qui sotto.]\n"
+                               + snap + "\n\n")
+                if hint:
+                    prefix += f"[UMORE UTENTE: {hint}]\n"
+                payload = prefix + message if prefix else message
                 await client.query(payload)
                 async for m in client.receive_response():
                     if isinstance(m, AssistantMessage):
