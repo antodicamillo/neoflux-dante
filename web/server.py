@@ -58,6 +58,21 @@ except Exception:  # pragma: no cover
 # altrimenti danno segnali errati). Riabilita con DANTE_MOOD=1 dopo la calibrazione.
 _MOOD_ON = os.environ.get("DANTE_MOOD", "0").lower() not in ("0", "", "false", "off", "no")
 
+# Circuit breaker ElevenLabs: se il cloud fallisce (quota/429/rete), salta ElevenLabs
+# per _EL_COOLDOWN_S e usa i motori locali (Piper/Whisper) — niente chiamate fallite
+# ripetute né latenza inutile. Si riprova dopo il cooldown.
+_EL_COOLDOWN_S = 300.0
+_el_cooldown_until = 0.0
+
+
+def _el_ready() -> bool:
+    return bool(_EL_KEY) and time.time() >= _el_cooldown_until
+
+
+def _el_trip() -> None:
+    global _el_cooldown_until
+    _el_cooldown_until = time.time() + _EL_COOLDOWN_S
+
 _STATIC = Path(__file__).resolve().parent / "static"
 _WEB_USER = os.environ.get("DANTE_WEB_USER", "neoflux")
 _WEB_PASS = os.environ.get("DANTE_WEB_PASSWORD")
@@ -91,11 +106,13 @@ def index(_auth: bool = Depends(_require_auth)) -> str:
 @app.get("/health")
 def health() -> dict:
     ts = _snapshot.get("ts", 0)
+    el = _el_ready()
     return {
         "ok": True,
         "auth": bool(_WEB_PASS),
-        "stt": "elevenlabs-scribe" if _EL_KEY else f"whisper-{_WHISPER_MODEL}",
-        "tts": f"elevenlabs:{_EL_MODEL}" if _EL_KEY else "piper",
+        "stt": "elevenlabs-scribe" if el else f"whisper-{_WHISPER_MODEL}",
+        "tts": f"elevenlabs:{_EL_MODEL}" if el else "piper",
+        "cloud_voice": "attiva" if el else ("cooldown" if _EL_KEY else "assente"),
         "snapshot_age_s": round(time.time() - ts) if ts else None,
     }
 
@@ -177,11 +194,12 @@ async def stt(audio: UploadFile = File(...), _auth: bool = Depends(_require_auth
     raw = await audio.read()
     if not raw:
         return {"text": ""}
-    if _EL_KEY:
+    if _el_ready():
         try:
             return {"text": await _stt_elevenlabs(raw, audio.content_type), "mood_hint": ""}
-        except Exception as exc:  # cloud giù/limite → ripiego locale
-            print(f"[stt] ElevenLabs Scribe fallito ({exc}); uso Whisper")
+        except Exception as exc:  # cloud giù/limite → cooldown + ripiego locale
+            _el_trip()
+            print(f"[stt] ElevenLabs Scribe fallito ({exc}); Whisper per {int(_EL_COOLDOWN_S)}s")
     text, hint = await _stt_whisper(raw)
     return {"text": text, "mood_hint": hint}
 
@@ -245,11 +263,12 @@ async def tts(payload: dict = Body(...), _auth: bool = Depends(_require_auth)) -
     text = (payload.get("text") or "").strip()
     if not text:
         return Response(status_code=204)
-    if _EL_KEY:
+    if _el_ready():
         try:
             return Response(content=await _tts_elevenlabs(text), media_type="audio/mpeg")
-        except Exception as exc:  # cloud giù o limite raggiunto → ripiego locale
-            print(f"[tts] ElevenLabs fallito ({exc}); uso Piper")
+        except Exception as exc:  # cloud giù o limite raggiunto → cooldown + ripiego locale
+            _el_trip()
+            print(f"[tts] ElevenLabs fallito ({exc}); Piper per {int(_EL_COOLDOWN_S)}s")
     return Response(content=await _tts_piper(text), media_type="audio/wav")
 
 

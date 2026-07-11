@@ -27,7 +27,8 @@ memoria condivisa tra i risvegli: backlog + cosa è già fatto. Aggiornalo sempr
 - [ ] Micro-animazioni transizioni di fase
 
 ### Robustezza & affidabilità
-- [ ] Gestione quota ElevenLabs (429) con messaggio UI chiaro + fallback trasparente
+- [x] Circuit breaker ElevenLabs: su 429/errore salta EL per 5 min → Piper/Whisper senza
+      chiamate fallite ripetute. /health mostra cloud_voice attiva/cooldown. FATTO, verificato.
 - [ ] Riconnessione WebSocket robusta (già base; irrobustire)
 - [ ] Resilienza snapshot poller (già try/except; aggiungere timestamp/età snapshot)
 - [ ] Test automatici (pytest) su: gate permessi, formattatori vz, routing STT/TTS
@@ -45,6 +46,7 @@ memoria condivisa tra i risvegli: backlog + cosa è già fatto. Aggiornalo sempr
 - [ ] Coerenza commenti/naming
 
 ## Fatto (log progressi)
+- Robustezza: circuit breaker ElevenLabs (cooldown 5min su fallimento) in /stt e /tts; /health espone cloud_voice. Deploy verificato.
 - Robustezza: /health ora riporta motori STT/TTS attivi + età snapshot; timestamp snapshot aggiunto. Deploy verificato.
 - (inizio turno) creato NIGHT_LOG.md
 - Osservabilità: snapshot con riga alert (soglie disco/RAM/online) + % per VPS. Deploy
