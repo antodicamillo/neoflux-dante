@@ -62,6 +62,8 @@ memoria condivisa tra i risvegli: backlog + cosa è già fatto. Aggiornalo sempr
 - Il loop ora usa scripts/box-ip.sh per scoprire l'IP → resiliente ai cambi DHCP.
 
 ## Fatto (log progressi)
+- Rete: IP STATICO 192.168.0.50 impostato sul box (netplan networkd, cloud-init net disabilitato,
+  auto-revert di sicurezza usato e cancellato). URL ora STABILE: https://192.168.0.50:8800.
 - PWA: DANTE installabile su telefono/desktop (manifest, icona 'D', service worker cache-static, meta apple/theme). Deploy verificato.
 - Ops: box-ip.sh riscritto con scan parallelo (2-3s). NB box migrato di nuovo (.201→.205): IP DHCP MOLTO instabile → static IP urgente.
 - Docs: README.md riscritto (assistente vocale web, motori voce ElevenLabs/locali, uso, config env, sicurezza). Nessun deploy.

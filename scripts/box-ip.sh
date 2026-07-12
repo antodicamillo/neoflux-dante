@@ -5,6 +5,9 @@
 # Override: DANTE_SUBNET (default 192.168.0), DANTE_PORT (default 8800).
 SUBNET="${DANTE_SUBNET:-192.168.0}"
 PORT="${DANTE_PORT:-8800}"
+# IP statico attuale del box: prova diretta (istantanea) prima dello scan.
+STATIC="${DANTE_STATIC_IP:-192.168.0.50}"
+if timeout 2 bash -c "exec 3<>/dev/tcp/$STATIC/$PORT" 2>/dev/null; then echo "$STATIC"; exit 0; fi
 python3 - "$SUBNET" "$PORT" <<'PY'
 import socket, sys, concurrent.futures
 sub, port = sys.argv[1], int(sys.argv[2])
