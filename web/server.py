@@ -103,6 +103,16 @@ def index(_auth: bool = Depends(_require_auth)) -> str:
     return (_STATIC / "index.html").read_text(encoding="utf-8")
 
 
+@app.get("/sw.js")
+def service_worker() -> Response:
+    # servito dalla radice così il service worker ha scope "/" (controlla tutta l'app)
+    return Response(
+        content=(_STATIC / "sw.js").read_text(encoding="utf-8"),
+        media_type="application/javascript",
+        headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"},
+    )
+
+
 @app.get("/health")
 def health() -> dict:
     ts = _snapshot.get("ts", 0)

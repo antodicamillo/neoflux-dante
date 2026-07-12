@@ -1,27 +1,23 @@
 #!/usr/bin/env bash
-# Trova l'IP corrente del box DANTE sulla LAN.
-# Il box è in DHCP (nessun IP statico), quindi l'indirizzo può cambiare: questo script
-# lo scopre provando gli IP noti e poi, come fallback, scandendo la /24.
-# Stampa l'IP su stdout ed esce 0; se non lo trova, esce 1.
-set -o pipefail
-KEY="${DANTE_SSH_KEY:-$HOME/.ssh/id_rsa}"
+# Trova l'IP del box DANTE sulla LAN. Il box è in DHCP (IP instabile), quindi lo
+# scopriamo scansionando la /24 per la porta 8800 (servizio DANTE, univoco) in
+# PARALLELO (~2-3s). Stampa l'IP su stdout ed esce 0; se non lo trova, esce 1.
+# Override: DANTE_SUBNET (default 192.168.0), DANTE_PORT (default 8800).
 SUBNET="${DANTE_SUBNET:-192.168.0}"
-
-_is_box() {  # $1 = ip → 0 se è il box (chiave ssh valida + /opt/neoflux-dante)
-  ssh -i "$KEY" -o BatchMode=yes -o ConnectTimeout=4 -o StrictHostKeyChecking=accept-new \
-    "root@$1" 'test -d /opt/neoflux-dante' 2>/dev/null
-}
-
-# 1) IP noti (i più probabili)
-for ip in "$SUBNET.201" "$SUBNET.202"; do
-  if _is_box "$ip"; then echo "$ip"; exit 0; fi
-done
-
-# 2) fallback: prima chi ha la 22 aperta, poi verifica che sia il box
-for i in $(seq 1 254); do
-  ip="$SUBNET.$i"
-  timeout 1 bash -c "exec 3<>/dev/tcp/$ip/22" 2>/dev/null || continue
-  if _is_box "$ip"; then echo "$ip"; exit 0; fi
-done
-
-exit 1
+PORT="${DANTE_PORT:-8800}"
+python3 - "$SUBNET" "$PORT" <<'PY'
+import socket, sys, concurrent.futures
+sub, port = sys.argv[1], int(sys.argv[2])
+def hit(i):
+    ip = f"{sub}.{i}"
+    s = socket.socket(); s.settimeout(0.6)
+    try:
+        return ip if s.connect_ex((ip, port)) == 0 else None
+    finally:
+        s.close()
+with concurrent.futures.ThreadPoolExecutor(max_workers=128) as ex:
+    for r in ex.map(hit, range(1, 255)):
+        if r:
+            print(r); sys.exit(0)
+sys.exit(1)
+PY

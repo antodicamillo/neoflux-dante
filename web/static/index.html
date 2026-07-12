@@ -2,8 +2,16 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>DANTE · Neoflux</title>
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#05070c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DANTE">
+<link rel="apple-touch-icon" href="/static/icon-180.png">
+<link rel="icon" type="image/png" href="/static/icon-192.png">
 <style>
   @font-face{font-family:'Share Tech Mono';font-style:normal;font-weight:400;font-display:swap;
     src:url('/static/vendor/sharetechmono.woff2') format('woff2');}
@@ -420,6 +428,9 @@ function setMoodFromHint(hint){const md=document.getElementById('mdot'),mt=docum
 function tick(){const d=new Date();document.getElementById('clock').textContent=[d.getHours(),d.getMinutes(),d.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');}
 setInterval(tick,1000);tick();
 connect();
+
+/* PWA: registra il service worker (installabile su telefono → "Aggiungi a Home") */
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{}); }
 
 /* ══════════ boot / tap-to-start (sblocca anche l'audio) ══════════ */
 (function boot(){
