@@ -319,6 +319,9 @@ function connect(){const proto=location.protocol==='https:'?'wss':'ws';
    setConn('riconnessione','err'); scheduleReconnect(); };
  ws.onmessage=e=>{const d=JSON.parse(e.data);
   if(d.type==='ready'){setConn('online','on');}
+  else if(d.type==='proactive'){ addLine('dante',md(d.text));   // avviso non richiesto: DANTE parla per primo
+    if(phase==='idle'){ subUser.textContent=''; chips.innerHTML=''; subDante.innerHTML=md(d.text);
+      if(speakOn) speak(d.text, ()=>{ if(convo) listen(); else setPhase('idle'); }); } }
   else if(d.type==='tool'){if(!curMsg)return;setPhase('thinking','sto controllando i server…');
     const c=document.createElement('span');c.className='chip';
     c.textContent=d.name.replace('mcp__neoflux-','').replace(/__/g,' ').replace('ToolSearch','ricerca');chips.appendChild(c);}

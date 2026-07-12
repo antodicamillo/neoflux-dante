@@ -378,15 +378,50 @@ async def _refresh_snapshot() -> str:
             except Exception:
                 pass
         head = ("⚠️ DA GUARDARE: " + "; ".join(alerts)) if alerts else "Nessun allarme: tutto nella norma."
-        return head + "\n\n" + "\n\n".join(p for p in parts if p)
+        return head + "\n\n" + "\n\n".join(p for p in parts if p), alerts
     return await asyncio.to_thread(build)
+
+
+# ── Cervello proattivo: quando compare un NUOVO allarme, DANTE avvisa lui (push a voce) ──
+_ws_clients: set = set()          # WebSocket connessi (per il push proattivo)
+_notified_alerts: set = set()     # allarmi già annunciati (dedup)
+
+
+async def _broadcast(msg: dict) -> None:
+    dead = []
+    for ws in list(_ws_clients):
+        try:
+            await ws.send_json(msg)
+        except Exception:
+            dead.append(ws)
+    for ws in dead:
+        _ws_clients.discard(ws)
+
+
+async def _proactive_check(alerts) -> None:
+    current = set(alerts)
+    # allarmi risolti → tolti dai notificati (se tornano, riavvisa)
+    for a in list(_notified_alerts):
+        if a not in current:
+            _notified_alerts.discard(a)
+    new = [a for a in alerts if a not in _notified_alerts]
+    if not new or not _ws_clients:
+        return
+    _notified_alerts.update(new)
+    if len(new) == 1:
+        text = f"Signore, un avviso: {new[0]}. La tengo d'occhio."
+    else:
+        text = "Signore, alcune cose da tenere d'occhio: " + "; ".join(new) + "."
+    await _broadcast({"type": "proactive", "text": text})
 
 
 async def _snapshot_loop() -> None:
     while True:
         try:
-            _snapshot["text"] = await _refresh_snapshot()
+            text, alerts = await _refresh_snapshot()
+            _snapshot["text"] = text
             _snapshot["ts"] = time.time()
+            await _proactive_check(alerts)
         except Exception:
             pass
         await asyncio.sleep(30)
@@ -417,6 +452,7 @@ async def ws(websocket: WebSocket) -> None:
         await websocket.close(code=1008)  # policy violation
         return
     await websocket.accept()
+    _ws_clients.add(websocket)   # registrato per il push proattivo
     try:
         # Un client per connessione: il contesto della conversazione persiste nella sessione.
         async with ClaudeSDKClient(options=build_options()) as client:
@@ -459,3 +495,5 @@ async def ws(websocket: WebSocket) -> None:
             await websocket.close()
         except Exception:
             pass
+    finally:
+        _ws_clients.discard(websocket)
