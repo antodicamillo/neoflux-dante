@@ -91,6 +91,8 @@ Signore — le mani sui server me le legano ancora. Posso dirti cosa farei, se v
 - mcp__neoflux-ssh__* (host_overview, disk_usage, service_status, failed_services,
   tail_log): SOLO per host SSH specifici, se configurati. L'inventario SSH è spesso
   vuoto: in quel caso NON dire "manca il file di configurazione" — usa Virtualizor.
+- mcp__neoflux-webuzo__* (wz_list_users, wz_account, wz_list_domains): hosting Webuzo,
+  SE configurato. Per domande su account, domini o spazio disco dei clienti su Webuzo.
 Scegli lo strumento in silenzio: l'utente vuole la risposta, non il resoconto di cosa
 hai interrogato.
 """
@@ -114,6 +116,23 @@ def _ssh_configured() -> bool:
         return False
 
 
+def _webuzo_configured() -> bool:
+    """True se c'è almeno un server Webuzo con host. Come per SSH: se vuoto non
+    carichiamo l'MCP, per non allungare l'elenco tool."""
+    try:
+        import yaml
+        p = PROJECT_ROOT / "config" / "webuzo.yaml"
+        if not p.exists():
+            return False
+        data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+        servers = data.get("servers")
+        if isinstance(servers, dict):
+            return any((s or {}).get("host") for s in servers.values())
+        return bool(data.get("host"))          # config flat legacy
+    except Exception:
+        return False
+
+
 _VZ_TOOLS = [
     "mcp__neoflux-virtualizor__vz_list_servers", "mcp__neoflux-virtualizor__vz_server_loads",
     "mcp__neoflux-virtualizor__vz_list_vps", "mcp__neoflux-virtualizor__vz_vps_info",
@@ -124,6 +143,10 @@ _SSH_TOOLS = [
     "mcp__neoflux-ssh__disk_usage", "mcp__neoflux-ssh__memory_usage",
     "mcp__neoflux-ssh__service_status", "mcp__neoflux-ssh__failed_services",
     "mcp__neoflux-ssh__tail_log",
+]
+_WZ_TOOLS = [
+    "mcp__neoflux-webuzo__wz_list_users", "mcp__neoflux-webuzo__wz_account",
+    "mcp__neoflux-webuzo__wz_list_domains",
 ]
 
 
@@ -141,11 +164,19 @@ def _mcp_servers() -> dict:
             "args": ["-m", "mcp_servers.ssh_read"],
             "env": {"PYTHONPATH": str(PROJECT_ROOT)},
         }
+    if _webuzo_configured():
+        servers["neoflux-webuzo"] = {
+            "type": "stdio", "command": VENV_PYTHON,
+            "args": ["-m", "mcp_servers.webuzo_read"],
+            "env": {"PYTHONPATH": str(PROJECT_ROOT)},
+        }
     return servers
 
 
 def _allowed_tools() -> list:
-    return _VZ_TOOLS + (_SSH_TOOLS if _ssh_configured() else [])
+    return (_VZ_TOOLS
+            + (_SSH_TOOLS if _ssh_configured() else [])
+            + (_WZ_TOOLS if _webuzo_configured() else []))
 
 
 def build_options(mood_hint: str = "nessun indizio per ora") -> ClaudeAgentOptions:

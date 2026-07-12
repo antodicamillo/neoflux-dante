@@ -1,6 +1,7 @@
 # Segreti e configurazione locale
 config/inventory.yaml
 config/virtualizor.yaml
+config/webuzo.yaml
 .env
 
 # Log e audit

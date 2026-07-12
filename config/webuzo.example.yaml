@@ -1,0 +1,12 @@
+# Webuzo (Softaculous) — ESEMPIO. Copia in config/webuzo.yaml (gitignored) o, meglio,
+# aggiungilo dal pannello /admin di DANTE. API key: Webuzo Admin → Settings → API Keys
+# (imposta "Allowed IPs" su tutti gli IP, l'IP pubblico del box è dinamico).
+
+servers:
+  webuzo-1:
+    host: 203.0.113.7          # IP o hostname del server Webuzo
+    port: 2005                 # admin HTTPS
+    apiuser: root              # utente admin
+    apikey: "LA_TUA_API_KEY"   # chiave generata nel pannello
+    verify_ssl: false          # cert self-signed su :2005
+    description: "Server Webuzo principale"

@@ -1,0 +1,324 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DANTE · Configurazione</title>
+<style>
+  :root{
+    --bg:#05070c; --panel:#0b111c; --panel2:#0e1626; --line:#17233b;
+    --txt:#cfe3ff; --dim:#7186a6; --cyan:#38e1ff; --cyan-dim:#1a7f96;
+    --ok:#3ee6a0; --err:#ff5a6e; --warn:#ffcf5a;
+    --radius:14px; --mono:'SF Mono',ui-monospace,'JetBrains Mono',Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--txt);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  body{background:
+    radial-gradient(1200px 600px at 50% -10%,rgba(56,225,255,.07),transparent 60%),
+    radial-gradient(800px 500px at 90% 110%,rgba(56,225,255,.05),transparent 60%),
+    var(--bg);
+    min-height:100vh;padding:0 0 80px}
+  a{color:var(--cyan);text-decoration:none}
+  header{
+    position:sticky;top:0;z-index:10;backdrop-filter:blur(14px);
+    background:rgba(5,7,12,.72);border-bottom:1px solid var(--line);
+    padding:16px max(20px,env(safe-area-inset-left)) 16px max(20px,env(safe-area-inset-left));
+    display:flex;align-items:center;gap:14px}
+  .logo{font-family:var(--mono);font-weight:600;letter-spacing:.28em;font-size:15px;
+    color:var(--cyan);text-shadow:0 0 18px rgba(56,225,255,.45)}
+  .sub{color:var(--dim);font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+  header .back{margin-left:auto;font-size:13px;color:var(--dim);
+    border:1px solid var(--line);padding:7px 13px;border-radius:10px;transition:.15s}
+  header .back:hover{color:var(--cyan);border-color:var(--cyan-dim)}
+  main{max-width:820px;margin:0 auto;padding:28px 20px 0}
+  .intro{color:var(--dim);font-size:13px;margin:0 0 26px;max-width:640px}
+  .intro b{color:var(--txt)}
+  section{
+    background:linear-gradient(180deg,var(--panel),var(--panel2));
+    border:1px solid var(--line);border-radius:var(--radius);
+    margin-bottom:22px;overflow:hidden}
+  .sec-head{display:flex;align-items:center;gap:12px;padding:16px 18px;
+    border-bottom:1px solid var(--line)}
+  .sec-head .ico{width:34px;height:34px;border-radius:9px;flex:0 0 auto;
+    display:grid;place-items:center;background:rgba(56,225,255,.08);
+    border:1px solid var(--cyan-dim)}
+  .sec-head .ico svg{width:18px;height:18px;stroke:var(--cyan);fill:none;
+    stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .sec-head h2{margin:0;font-size:15px;font-weight:600;letter-spacing:.02em}
+  .sec-head p{margin:2px 0 0;font-size:12px;color:var(--dim)}
+  .sec-head .count{margin-left:auto;font-family:var(--mono);font-size:12px;
+    color:var(--dim);background:rgba(255,255,255,.03);border:1px solid var(--line);
+    padding:4px 10px;border-radius:20px}
+  .body{padding:6px 18px 18px}
+  .empty{color:var(--dim);font-size:13px;padding:16px 2px;font-style:italic}
+
+  .conn{display:flex;align-items:center;gap:12px;padding:13px 14px;margin-top:12px;
+    background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:11px}
+  .conn .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;
+    background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+  .conn .info{min-width:0;flex:1}
+  .conn .name{font-weight:600;font-size:14px}
+  .conn .meta{color:var(--dim);font-size:12px;font-family:var(--mono);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .conn .acts{display:flex;gap:8px;flex:0 0 auto}
+
+  button{font:inherit;cursor:pointer;border-radius:9px;border:1px solid var(--line);
+    background:rgba(255,255,255,.03);color:var(--txt);padding:8px 13px;transition:.15s}
+  button:hover{border-color:var(--cyan-dim);color:var(--cyan)}
+  button:disabled{opacity:.5;cursor:default}
+  button.sm{padding:6px 11px;font-size:12.5px}
+  button.primary{background:linear-gradient(180deg,rgba(56,225,255,.22),rgba(56,225,255,.10));
+    border-color:var(--cyan-dim);color:#eafcff;font-weight:600}
+  button.primary:hover{border-color:var(--cyan);box-shadow:0 0 18px rgba(56,225,255,.25)}
+  button.danger:hover{border-color:var(--err);color:var(--err)}
+  button.ghost{border-color:transparent;background:transparent;color:var(--dim)}
+  button.ghost:hover{color:var(--cyan)}
+
+  .add{margin-top:14px;border-top:1px dashed var(--line);padding-top:6px}
+  .add>summary{list-style:none;cursor:pointer;color:var(--cyan);font-size:13px;
+    padding:10px 2px;user-select:none;display:flex;align-items:center;gap:8px}
+  .add>summary::-webkit-details-marker{display:none}
+  .add>summary .plus{font-family:var(--mono);font-size:16px;line-height:1}
+  .add[open]>summary{color:var(--dim)}
+  form.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;padding:8px 2px 4px}
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field.full{grid-column:1/-1}
+  .field label{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+  .field label .req{color:var(--cyan)}
+  input[type=text],input[type=number],input[type=password]{
+    font:inherit;color:var(--txt);background:#070c15;border:1px solid var(--line);
+    border-radius:9px;padding:10px 12px;width:100%;transition:.15s}
+  input:focus{outline:none;border-color:var(--cyan-dim);background:#081120;
+    box-shadow:0 0 0 3px rgba(56,225,255,.08)}
+  input::placeholder{color:#3d4d6a}
+  .check{flex-direction:row;align-items:center;gap:9px}
+  .check input{width:17px;height:17px;accent-color:var(--cyan)}
+  .check label{text-transform:none;letter-spacing:0;font-size:13px;color:var(--txt)}
+  .form-acts{grid-column:1/-1;display:flex;align-items:center;gap:10px;margin-top:4px}
+  .result{font-size:12.5px;font-family:var(--mono);flex:1;min-width:0;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .result.ok{color:var(--ok)} .result.err{color:var(--err)} .result.wait{color:var(--dim)}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+    background:var(--panel2);border:1px solid var(--cyan-dim);color:#eafcff;
+    padding:12px 20px;border-radius:11px;font-size:13.5px;opacity:0;pointer-events:none;
+    transition:.28s;box-shadow:0 10px 40px rgba(0,0,0,.5);z-index:50}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.err{border-color:var(--err)}
+  @media(max-width:560px){form.grid{grid-template-columns:1fr}.conn .meta{display:none}}
+</style>
+
+<header>
+  <span class="logo">DANTE</span>
+  <span class="sub">Configurazione</span>
+  <a class="back" href="/">← Assistente</a>
+</header>
+
+<main>
+  <p class="intro">Aggiungi qui i tuoi server e host. DANTE li osserverà in <b>sola lettura</b>.
+    Le credenziali restano sul box (file protetti, mai su GitHub). Usa <b>Testa</b> prima di salvare.</p>
+  <div id="root"><div class="empty">Carico la configurazione…</div></div>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (s,el=document)=>el.querySelector(s);
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// Schema campi per tipo (rispecchia web/admin.py). [key,label,input,default,required]
+const ICONS = {
+  virtualizor:'<path d="M4 6h16M4 6v4a2 2 0 002 2h12a2 2 0 002-2V6M4 18h16M4 18v-4M20 18v-4M8 9h.01M8 15h.01"/>',
+  webuzo:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18"/>',
+  ssh:'<rect x="3" y="4" width="18" height="14" rx="2"/><path d="M7 9l3 2.5L7 14M13 14h4"/>'
+};
+const SCHEMA = {
+  virtualizor:{
+    title:'Virtualizor', desc:'VPS / nodi cloud — Admin API (porta 4085)', name:'Nome nodo',
+    fields:[
+      ['host','Host / IP','text','',true],
+      ['port','Porta','number',4085,false],
+      ['apikey','API key','password','',true],
+      ['apipass','API pass','password','',true],
+      ['admin_auth','Admin API (adminapikey)','checkbox',true,false],
+      ['verify_ssl','Verifica certificato SSL','checkbox',false,false],
+      ['description','Descrizione','text','',false,'full'],
+    ]},
+  webuzo:{
+    title:'Webuzo', desc:'Hosting Webuzo/Softaculous — Admin API (porta 2005)', name:'Nome server',
+    fields:[
+      ['host','Host / IP','text','',true],
+      ['port','Porta','number',2005,false],
+      ['apiuser','Utente','text','root',false],
+      ['apikey','API key','password','',true],
+      ['verify_ssl','Verifica certificato SSL','checkbox',false,false],
+      ['description','Descrizione','text','',false,'full'],
+    ]},
+  ssh:{
+    title:'Host SSH', desc:'Server Linux via SSH — chiave o password', name:'Nome host',
+    fields:[
+      ['hostname','Host / IP','text','',true],
+      ['port','Porta','number',22,false],
+      ['username','Utente','text','root',false],
+      ['key_filename','Chiave SSH (path sul box)','text','',false,'full'],
+      ['password','Password (alternativa)','password','',false,'full'],
+      ['description','Descrizione','text','',false,'full'],
+    ]},
+};
+const SECRET = new Set(['apikey','apipass','password']);
+
+let CONFIG = {};
+
+function toast(msg,isErr){
+  const t=$('#toast'); t.textContent=msg; t.className='toast show'+(isErr?' err':'');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.className='toast',2600);
+}
+
+async function api(path,body){
+  const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}
+
+function connMeta(t,e){
+  if(t==='ssh') return `${e.username||'root'}@${e.hostname||'?'}:${e.port||22}`;
+  return `${e.host||'?'}:${e.port||''}`;
+}
+
+function fieldHTML(t,[key,label,type,def,req,span],val){
+  const id=`${t}-${key}`;
+  if(type==='checkbox'){
+    const on = val===undefined ? def : !!val;
+    return `<div class="field check full"><input type="checkbox" id="${id}" ${on?'checked':''}>
+      <label for="${id}">${esc(label)}</label></div>`;
+  }
+  const ph = SECRET.has(key) ? (val ? '•••••• (lascia vuoto per non cambiare)' : '') : '';
+  const v = (val!==undefined && !SECRET.has(key)) ? esc(val) : '';
+  return `<div class="field ${span==='full'?'full':''}">
+    <label for="${id}">${esc(label)}${req?' <span class="req">*</span>':''}</label>
+    <input type="${type}" id="${id}" value="${v}" placeholder="${esc(ph||def||'')}"
+      ${type==='password'?'autocomplete="new-password"':''}></div>`;
+}
+
+function readForm(t,formEl){
+  const cfg={};
+  for(const [key,,type] of SCHEMA[t].fields){
+    const el=$(`#${t}-${key}`,formEl); if(!el) continue;
+    cfg[key] = type==='checkbox' ? el.checked : el.value.trim();
+  }
+  return cfg;
+}
+
+function formHTML(t,name='',entry){
+  const s=SCHEMA[t];
+  const nameVal = esc(name);
+  const fields = s.fields.map(f=>fieldHTML(t,f,entry?.[f[0]])).join('');
+  return `<form class="grid" data-type="${t}" data-edit="${nameVal}">
+    <div class="field full"><label>${esc(s.name)} <span class="req">*</span></label>
+      <input type="text" class="conn-name" value="${nameVal}" ${name?'readonly':''}
+        placeholder="es. principale"></div>
+    ${fields}
+    <div class="form-acts">
+      <button type="button" class="sm test">Testa</button>
+      <button type="submit" class="primary sm">${name?'Aggiorna':'Salva'}</button>
+      <span class="result wait"></span>
+    </div>
+  </form>`;
+}
+
+function render(){
+  const root=$('#root'); root.innerHTML='';
+  for(const t of Object.keys(SCHEMA)){
+    const s=SCHEMA[t], entries=CONFIG[t]||{}, names=Object.keys(entries);
+    const sec=document.createElement('section');
+    sec.innerHTML=`
+      <div class="sec-head">
+        <div class="ico"><svg viewBox="0 0 24 24">${ICONS[t]}</svg></div>
+        <div><h2>${s.title}</h2><p>${s.desc}</p></div>
+        <span class="count">${names.length} attiv${names.length===1?'a':'e'}</span>
+      </div>
+      <div class="body">
+        ${names.length?'':'<div class="empty">Nessuna connessione. Aggiungine una qui sotto.</div>'}
+        ${names.map(n=>`
+          <div class="conn" data-name="${esc(n)}">
+            <span class="dot"></span>
+            <div class="info">
+              <div class="name">${esc(n)}${entries[n].description?` <span style="color:var(--dim);font-weight:400">· ${esc(entries[n].description)}</span>`:''}</div>
+              <div class="meta">${esc(connMeta(t,entries[n]))}</div>
+            </div>
+            <div class="acts">
+              <button class="sm test-saved">Testa</button>
+              <button class="sm edit">Modifica</button>
+              <button class="sm ghost danger del">Rimuovi</button>
+            </div>
+          </div>`).join('')}
+        <details class="add">
+          <summary><span class="plus">+</span> Aggiungi ${s.title}</summary>
+          <div class="add-form">${formHTML(t)}</div>
+        </details>
+      </div>`;
+    root.appendChild(sec);
+  }
+  wire();
+}
+
+function wire(){
+  document.querySelectorAll('.conn').forEach(row=>{
+    const sec=row.closest('section'), t=typeFromSec(sec), name=row.dataset.name;
+    $('.test-saved',row).onclick=async()=>{
+      const btn=$('.test-saved',row); btn.disabled=true; btn.textContent='…';
+      try{ const r=await api('/admin/test',{type:t,name}); toast(r.ok?('✓ '+r.msg):('✗ '+r.msg),!r.ok); }
+      catch(e){ toast('Errore: '+e.message,true); }
+      finally{ btn.disabled=false; btn.textContent='Testa'; }
+    };
+    $('.edit',row).onclick=()=>{
+      const det=$('.add',sec); det.open=true;
+      $('.add-form',sec).innerHTML=formHTML(t,name,CONFIG[t][name]);
+      wireForm($('form',$('.add-form',sec)));
+      det.querySelector('summary').firstChild;
+      det.scrollIntoView({behavior:'smooth',block:'center'});
+    };
+    $('.del',row).onclick=async()=>{
+      if(!confirm(`Rimuovere "${name}"?`)) return;
+      try{ await api('/admin/delete',{type:t,name}); delete CONFIG[t][name]; render();
+        toast('Rimossa: '+name); }
+      catch(e){ toast('Errore: '+e.message,true); }
+    };
+  });
+  document.querySelectorAll('.add-form form').forEach(wireForm);
+}
+
+function typeFromSec(sec){ return sec.querySelector('form')?.dataset.type; }
+
+function wireForm(form){
+  if(!form || form._wired) return; form._wired=true;
+  const t=form.dataset.type, res=$('.result',form), nameEl=$('.conn-name',form);
+  const collect=()=>{
+    const name=nameEl.value.trim();
+    if(!name){ res.className='result err'; res.textContent='Serve un nome'; return null; }
+    return {name,config:readForm(t,form)};
+  };
+  $('.test',form).onclick=async()=>{
+    const c=collect(); if(!c) return;
+    const btn=$('.test',form); btn.disabled=true; res.className='result wait'; res.textContent='Provo…';
+    try{ const r=await api('/admin/test',{type:t,config:c.config});
+      res.className='result '+(r.ok?'ok':'err'); res.textContent=(r.ok?'✓ ':'✗ ')+r.msg; }
+    catch(e){ res.className='result err'; res.textContent='Errore: '+e.message; }
+    finally{ btn.disabled=false; }
+  };
+  form.onsubmit=async ev=>{
+    ev.preventDefault();
+    const c=collect(); if(!c) return;
+    const btn=$('button[type=submit]',form); btn.disabled=true;
+    res.className='result wait'; res.textContent='Salvo…';
+    try{
+      await api('/admin/save',{type:t,name:c.name,config:c.config});
+      CONFIG=await (await fetch('/admin/config')).json();
+      toast('Salvata: '+c.name); render();
+    }catch(e){ res.className='result err'; res.textContent='Errore: '+e.message; btn.disabled=false; }
+  };
+}
+
+(async()=>{
+  try{ CONFIG=await (await fetch('/admin/config')).json(); render(); }
+  catch(e){ $('#root').innerHTML='<div class="empty">Errore nel caricamento: '+esc(e.message)+'</div>'; }
+})();
+</script>

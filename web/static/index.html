@@ -31,6 +31,9 @@
   header .brand{font-size:18px;font-weight:700;letter-spacing:.34em;text-shadow:0 0 12px rgba(34,211,238,.6);color:#e6feff}
   header .tag{font-size:10px;letter-spacing:.2em;color:var(--dim);border:1px solid var(--cyan-deep);padding:2px 7px;border-radius:5px}
   header .spacer{flex:1}
+  .cfg{display:inline-flex;align-items:center;justify-content:center;color:var(--dim);
+    width:30px;height:30px;border-radius:8px;transition:.18s;text-decoration:none}
+  .cfg:hover{color:var(--cyan);background:rgba(34,211,238,.08)}
   .stat{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.15em;color:var(--dim);text-transform:uppercase}
   .dot{width:8px;height:8px;border-radius:50%;background:#334;transition:.3s}
   .dot.on{background:var(--ok);box-shadow:0 0 10px var(--ok)}
@@ -118,6 +121,13 @@
     <span class="mood" id="mood" title="Umore rilevato dalla voce"><span class="mdot" id="mdot"></span><span id="mtxt">—</span></span>
     <span class="persona" id="persona">in attesa</span>
     <span class="stat"><span class="dot" id="dot"></span><span id="conn">connessione…</span></span>
+    <a class="cfg" href="/admin" title="Configurazione server e host" aria-label="Configurazione">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor"
+           stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.2.61.76 1.05 1.42 1.05H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+      </svg>
+    </a>
     <span class="clock" id="clock">--:--</span>
   </header>
 

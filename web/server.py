@@ -46,6 +46,9 @@ from agent.config import build_options
 # Snapshot infra sempre pronta (poller in background) → risposte rapide senza tool
 from mcp_servers import virtualizor_read as _vz
 
+# Pannello /admin: gestione connessioni (helper puri)
+from web import admin as _admin
+
 # Lettura leggera dell'umore dalla voce (solo prosodia, numpy). Import difensivo:
 # è un segnale cosmetico, non deve mai far cadere la trascrizione se numpy manca.
 try:
@@ -111,6 +114,62 @@ def service_worker() -> Response:
         media_type="application/javascript",
         headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"},
     )
+
+
+@app.get("/admin", response_class=HTMLResponse)
+def admin_page(_auth: bool = Depends(_require_auth)) -> str:
+    return (_STATIC / "admin.html").read_text(encoding="utf-8")
+
+
+@app.get("/admin/config")
+def admin_config(_auth: bool = Depends(_require_auth)) -> dict:
+    return {t: _admin.masked(_admin.load(t)) for t in _admin.TYPES}
+
+
+@app.post("/admin/test")
+def admin_test(payload: dict = Body(...), _auth: bool = Depends(_require_auth)) -> dict:
+    t = payload.get("type")
+    if t not in _admin.TYPES:
+        raise HTTPException(status_code=400, detail="tipo sconosciuto")
+    name = payload.get("name")
+    if name and not payload.get("config"):        # testa una connessione già salvata
+        cfg = _admin.load(t).get(name)
+        if not cfg:
+            return {"ok": False, "msg": "connessione non trovata"}
+    else:                                          # testa i valori del form
+        cfg = _admin.clean_config(t, payload.get("config") or {})
+    try:
+        return {"ok": True, "msg": _admin.test(t, cfg)}
+    except Exception as exc:
+        return {"ok": False, "msg": f"{type(exc).__name__}: {exc}"}
+
+
+@app.post("/admin/save")
+def admin_save(payload: dict = Body(...), _auth: bool = Depends(_require_auth)) -> dict:
+    t = payload.get("type")
+    name = (payload.get("name") or "").strip()
+    if t not in _admin.TYPES:
+        raise HTTPException(status_code=400, detail="tipo sconosciuto")
+    if not name:
+        raise HTTPException(status_code=400, detail="nome mancante")
+    coll = _admin.load(t)
+    existing = coll.get(name, {})
+    # unisci: mantieni i segreti esistenti se il form li lascia vuoti (mascherati)
+    merged = {**existing, **_admin.clean_config(t, payload.get("config") or {})}
+    coll[name] = merged
+    _admin.save(t, coll)
+    return {"ok": True}
+
+
+@app.post("/admin/delete")
+def admin_delete(payload: dict = Body(...), _auth: bool = Depends(_require_auth)) -> dict:
+    t, name = payload.get("type"), payload.get("name")
+    if t not in _admin.TYPES:
+        raise HTTPException(status_code=400, detail="tipo sconosciuto")
+    coll = _admin.load(t)
+    coll.pop(name, None)
+    _admin.save(t, coll)
+    return {"ok": True}
 
 
 @app.get("/health")
