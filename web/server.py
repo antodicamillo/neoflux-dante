@@ -27,7 +27,7 @@ from pathlib import Path
 
 import httpx
 
-from fastapi import Body, Depends, FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import Body, Depends, FastAPI, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
@@ -200,11 +200,12 @@ async def _stt_whisper(raw: bytes) -> tuple[str, str]:
 
 
 @app.post("/stt")
-async def stt(audio: UploadFile = File(...), _auth: bool = Depends(_require_auth)) -> dict:
+async def stt(audio: UploadFile = File(...), engine: str = Form(""),
+              _auth: bool = Depends(_require_auth)) -> dict:
     raw = await audio.read()
     if not raw:
         return {"text": ""}
-    if _el_ready():
+    if engine != "local" and _el_ready():   # engine=local → forza Whisper (gratis)
         try:
             return {"text": await _stt_elevenlabs(raw, audio.content_type), "mood_hint": ""}
         except Exception as exc:  # cloud giù/limite → cooldown + ripiego locale
@@ -246,9 +247,9 @@ async def _tts_elevenlabs(text: str) -> bytes:
             url, params={"output_format": "mp3_44100_128"},
             headers={"xi-api-key": _EL_KEY, "Content-Type": "application/json"},
             json={"text": text, "model_id": _EL_MODEL, "language_code": "it",
-                  # stabilità bassa + un po' di stile = più espressiva/umana
-                  "voice_settings": {"stability": 0.35, "similarity_boost": 0.85,
-                                     "style": 0.3, "use_speaker_boost": True}},
+                  # JARVIS: stabile/misurato (non mosso), stile 0 (non drammatico), un filo più lento
+                  "voice_settings": {"stability": 0.62, "similarity_boost": 0.85,
+                                     "style": 0.0, "use_speaker_boost": True, "speed": 0.96}},
         )
         r.raise_for_status()
         return r.content
@@ -273,7 +274,8 @@ async def tts(payload: dict = Body(...), _auth: bool = Depends(_require_auth)) -
     text = (payload.get("text") or "").strip()
     if not text:
         return Response(status_code=204)
-    if _el_ready():
+    local = (payload.get("engine") == "local")   # engine=local → forza Piper (gratis, ~0.15s)
+    if not local and _el_ready():
         try:
             return Response(content=await _tts_elevenlabs(text), media_type="audio/mpeg")
         except Exception as exc:  # cloud giù o limite raggiunto → cooldown + ripiego locale
