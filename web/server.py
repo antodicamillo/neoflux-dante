@@ -174,13 +174,26 @@ async def _stt_whisper(raw: bytes) -> tuple[str, str]:
         model = await _get_whisper()
 
         def _run() -> str:
+            # Anti-allucinazione: Whisper su clip corte/silenziose inventa frasi. Mitighiamo con
+            # VAD, no condition-on-previous, soglie di no-speech/logprob, e scartando i segmenti
+            # a bassa confidenza (tipici delle allucinazioni tipo "ci vediamo più avanti").
             segments, _info = model.transcribe(
                 wav, language="it", beam_size=5, vad_filter=True,
-                initial_prompt="Comando per l'assistente DANTE sull'infrastruttura Neoflux: "
-                               "VPS, server, Virtualizor, Proxmox, cPanel, nodo, RAM, CPU, disco, "
-                               "banda, servizio, container, host.",
+                vad_parameters={"min_silence_duration_ms": 400},
+                condition_on_previous_text=False,
+                no_speech_threshold=0.6,
+                log_prob_threshold=-1.0,
+                compression_ratio_threshold=2.4,
+                initial_prompt="Comando breve, in italiano, per un assistente di gestione server.",
             )
-            return " ".join(s.text for s in segments).strip()
+            keep = []
+            for s in segments:
+                if getattr(s, "no_speech_prob", 0.0) > 0.6:   # probabile silenzio
+                    continue
+                if getattr(s, "avg_logprob", 0.0) < -1.0:      # bassa confidenza → scarta
+                    continue
+                keep.append(s.text)
+            return " ".join(keep).strip()
 
         text = await asyncio.to_thread(_run)
         hint = ""
