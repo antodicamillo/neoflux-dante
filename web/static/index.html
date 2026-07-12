@@ -145,9 +145,6 @@
     <button class="mini on" id="spk" title="Voce di DANTE on/off" aria-label="Voce on/off">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8.5a4 4 0 0 1 0 7"/><path d="M18.7 6a8 8 0 0 1 0 12"/></svg>
     </button>
-    <button class="mini on" id="eng" title="Motore voce: cloud (qualità) / locale (gratis)" aria-label="Motore voce">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 18a4.5 4.5 0 0 1 .5-9 6 6 0 0 1 11.4 1.6A3.5 3.5 0 0 1 17.5 18z"/></svg>
-    </button>
     <button class="mini" id="scriptBtn" title="Trascrizione" aria-label="Trascrizione">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
     </button>
@@ -284,7 +281,7 @@ async function speak(text,after){
   setPhase('speaking','DANTE parla');
   try{
     const res=await fetch('/tts',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({text:stripMd(text).slice(0,700),engine}),credentials:'same-origin'});
+      body:JSON.stringify({text:stripMd(text).slice(0,700)}),credentials:'same-origin'});
     if(res.status===204){ if(after)after(); return; }
     const buf=await res.arrayBuffer();
     ttsCtx=ttsCtx||new (window.AudioContext||window.webkitAudioContext)();
@@ -394,7 +391,7 @@ async function onRecStop(){
 }
 async function transcribe(blob){
   try{
-    const fd=new FormData(); fd.append('audio',blob,'a.webm'); fd.append('engine',engine);
+    const fd=new FormData(); fd.append('audio',blob,'a.webm');
     const r=await fetch('/stt',{method:'POST',body:fd,credentials:'same-origin'});
     if(!r.ok){ hint.textContent='Trascrizione: errore '+r.status; return {text:'',moodHint:''}; }
     const j=await r.json(); return {text:j.text||'', moodHint:j.mood_hint||''};
@@ -413,16 +410,6 @@ canvas.style.pointerEvents='auto'; canvas.onclick=()=>micBtn.click();
 const _SPK_ON='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8.5a4 4 0 0 1 0 7"/><path d="M18.7 6a8 8 0 0 1 0 12"/></svg>';
 const _SPK_OFF='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9l5 6M21 9l-5 6"/></svg>';
 spkBtn.onclick=()=>{speakOn=!speakOn;spkBtn.classList.toggle('on',speakOn);spkBtn.innerHTML=speakOn?_SPK_ON:_SPK_OFF;if(!speakOn)stopSpeaking();};
-/* interruttore motore voce: cloud (ElevenLabs, qualità) ↔ locale (Piper/Whisper, gratis) */
-const engBtn=document.getElementById('eng');
-let engine=localStorage.getItem('dante-engine')||'cloud';
-const ENG_CLOUD='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 18a4.5 4.5 0 0 1 .5-9 6 6 0 0 1 11.4 1.6A3.5 3.5 0 0 1 17.5 18z"/></svg>';
-const ENG_LOCAL='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="10" rx="1.5"/><path d="M10 3v2M14 3v2M10 19v2M14 19v2M3 10h2M3 14h2M19 10h2M19 14h2"/></svg>';
-function applyEngine(){engBtn.innerHTML=engine==='cloud'?ENG_CLOUD:ENG_LOCAL;engBtn.classList.add('on');
- engBtn.title=engine==='cloud'?'Motore: CLOUD (voce JARVIS, usa crediti) — tocca per LOCALE':'Motore: LOCALE (gratis, più veloce) — tocca per CLOUD';}
-applyEngine();
-engBtn.onclick=()=>{engine=(engine==='cloud')?'local':'cloud';localStorage.setItem('dante-engine',engine);applyEngine();
- hint.textContent=engine==='cloud'?'Voce CLOUD · qualità JARVIS (usa crediti)':'Voce LOCALE · gratis e più veloce';};
 scriptBtn.onclick=()=>{scriptEl.classList.toggle('show');scriptBtn.classList.toggle('on');};
 kbBtn.onclick=()=>{textbar.classList.toggle('show');kbBtn.classList.toggle('on');if(textbar.classList.contains('show'))txt.focus();};
 txt.addEventListener('keydown',e=>{if(e.key==='Enter'){const t=txt.value.trim();if(t){txt.value='';ask(t);}}});
