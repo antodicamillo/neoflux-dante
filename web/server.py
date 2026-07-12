@@ -49,6 +49,9 @@ from mcp_servers import virtualizor_read as _vz
 # Pannello /admin: gestione connessioni (helper puri)
 from web import admin as _admin
 
+# Ponte "LLM custom" per la voce real-time (ElevenLabs Agents → stesso cervello del /ws)
+from web import llm_bridge as _llm_bridge
+
 # Lettura leggera dell'umore dalla voce (solo prosodia, numpy). Import difensivo:
 # è un segnale cosmetico, non deve mai far cadere la trascrizione se numpy manca.
 try:
@@ -556,3 +559,13 @@ async def ws(websocket: WebSocket) -> None:
             pass
     finally:
         _ws_clients.discard(websocket)
+
+
+# --- Ponte LLM per la voce real-time ---------------------------------------
+# Endpoint OpenAI-compatibile (/v1/chat/completions) che espone lo STESSO cervello
+# del /ws a ElevenLabs Agents. Protetto da Bearer (DANTE_LLM_TOKEN); se il token non
+# è impostato, l'endpoint risponde 503 (disattivato). Lo snapshot è letto a runtime.
+app.include_router(_llm_bridge.make_router(
+    get_snapshot=lambda: _snapshot.get("text", ""),
+    token=os.environ.get("DANTE_LLM_TOKEN"),
+))
